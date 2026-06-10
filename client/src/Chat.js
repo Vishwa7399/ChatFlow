@@ -8,8 +8,11 @@ function Chat({ socket, username, room }) {
     // Set to true so it immediately shows the spinner when the component loads
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
 
-    const sendMessage = async () => {
+   const sendMessage = async () => {
         if (currentMessage !== "") {
+            // 1. Reach into the backpack and grab the wristband
+            const token = localStorage.getItem("chat_token");
+
             const messageData = {
                 room: room,
                 author: username,
@@ -18,7 +21,9 @@ function Chat({ socket, username, room }) {
                     new Date(Date.now()).getHours() +
                     ":" +
                     new Date(Date.now()).getMinutes(),
+                token: token, // 2. Attach the wristband to the payload!
             };
+            
             await socket.emit("send_message", messageData);
             setMessageList((list) => [...list, messageData]);
             setCurrentMessage("");

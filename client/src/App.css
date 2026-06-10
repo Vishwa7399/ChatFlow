@@ -245,3 +245,18 @@ body {
   border: 1px solid #ced4da;
   opacity: 0.8;
 }
+
+.welcome-text {
+  color: #2c3e50;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.logout-btn {
+  background-color: #e74c3c !important;
+  margin-top: 10px;
+}
+
+.logout-btn:hover {
+  background-color: #c0392b !important;
+}

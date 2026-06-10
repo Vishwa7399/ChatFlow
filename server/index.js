@@ -5,6 +5,7 @@ const http = require("http");
 const cors = require("cors");
 const { Server } = require("socket.io");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 // 2. PRISMA 7 DRIVER ADAPTER IMPORTS
 const { Pool } = require("pg");
@@ -86,12 +87,21 @@ app.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Incorrect password." });
     }
 
-    // 3. THE RESPONSE: Let them in! 
+    // NEW: THE WRISTBAND - Generate the JWT
+    // We pack their username inside, sign it with the .env secret, and make it expire in 24 hours.
+    const token = jwt.sign(
+      { id: user.id, username: user.username }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: "24h" }
+    );
+
+    // NEW: THE RESPONSE - Let them in AND hand them the wristband! 
     res.status(200).json({ 
       message: "Login successful!",
-      username: user.username
+      username: user.username,
+      token: token // <-- Sending the newly minted token back to React
     });
-
+   
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -141,23 +151,39 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Handle sending and saving messages
+ // Handle sending new messages securely
   socket.on("send_message", async (data) => {
     try {
-      // Step A: Save to PostgreSQL via Prisma
+      // 1. THE BOUNCER: Verify the wristband mathematically
+      // If the token is fake, expired, or missing, this line will crash 
+      // and immediately jump down to the 'catch' block, blocking the message!
+      const decodedToken = jwt.verify(data.token, process.env.JWT_SECRET);
+
+      // 2. THE ANTI-SPOOFING LOCK:
+      // We ignore data.author. We ONLY trust the name locked inside the cryptographic token.
+      const verifiedSender = decodedToken.username;
+
+      // 3. Save the secure message to PostgreSQL
       await prisma.message.create({
         data: {
           roomId: data.room,
-          author: data.author,
-          text: data.message, 
+          author: verifiedSender, // Completely tamper-proof
+          text: data.message,
         },
       });
 
-      // Step B: Broadcast to everyone else in the room
-      socket.to(data.room).emit("receive_message", data);
+      // 4. Broadcast the message to everyone else in the room
+      // We overwrite the author field with the verified name just to be completely safe
+      const secureMessageData = {
+        ...data,
+        author: verifiedSender 
+      };
       
+      socket.to(data.room).emit("receive_message", secureMessageData);
+
     } catch (error) {
-      console.error("Failed to save message to database:", error);
+      // If they have no token or a fake token, they end up here.
+      console.error("SECURITY ALERT: Blocked an unauthorized or spoofed message attempt!");
     }
   });
 
