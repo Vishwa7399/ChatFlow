@@ -33,9 +33,34 @@ io.on("connection", (socket) => {
   console.log(`User Connected: ${socket.id}`);
 
   // Handle joining a room
-  socket.on("join_room", (data) => {
-    socket.join(data);
-    console.log(`User with ID: ${socket.id} joined room: ${data}`);
+  // Handle joining a room and fetching history
+  // Handle joining a room and fetching history
+  socket.on("join_room", async (room) => {
+    socket.join(room);
+    console.log(`User with ID: ${socket.id} joined room: ${room}`);
+
+    try {
+      // 1. Fetch history from PostgreSQL
+      const chatHistory = await prisma.message.findMany({
+        where: { roomId: room },
+        orderBy: { createdAt: "asc" },
+      });
+
+      // 2. Normalize the data: Translate '.text' back to '.message' 
+      // so the frontend receives exactly what it expects!
+      const formattedHistory = chatHistory.map((msg) => ({
+        room: msg.roomId,
+        author: msg.author,
+        message: msg.text, // <-- The magic translation line
+        createdAt: msg.createdAt,
+      }));
+
+      // 3. Emit the perfectly formatted history to the user
+      socket.emit("receive_history", formattedHistory);
+      
+    } catch (error) {
+      console.error("Failed to fetch chat history:", error);
+    }
   });
 
   // Handle sending and saving messages
