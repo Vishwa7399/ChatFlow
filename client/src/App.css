@@ -228,3 +228,20 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* The Login/Register Button Layout */
+.auth-button-container {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+/* Make disabled inputs look intentionally locked */
+.joinChatContainer input:disabled {
+  background-color: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+  border: 1px solid #ced4da;
+  opacity: 0.8;
+}
