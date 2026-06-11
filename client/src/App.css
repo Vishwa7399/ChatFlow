@@ -260,3 +260,294 @@ body {
 .logout-btn:hover {
   background-color: #c0392b !important;
 }
+
+/* --- DASHBOARD LAYOUT --- */
+.dashboard-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background-color: #efeae2; /* Classic WhatsApp background */
+  overflow: hidden;
+}
+
+/* Left Pane */
+.sidebar {
+  width: 30%;
+  min-width: 300px;
+  background-color: #ffffff;
+  border-right: 1px solid #d1d7db;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar h3 {
+  padding: 20px;
+  background-color: #f0f2f5;
+  margin: 0;
+  border-bottom: 1px solid #d1d7db;
+}
+
+.placeholder-chat {
+  padding: 15px 20px;
+  border-bottom: 1px solid #f2f2f2;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.placeholder-chat:hover {
+  background-color: #f5f6f6;
+}
+
+/* Right Pane */
+.main-content {
+  width: 70%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.chat-window {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: #54656f;
+}
+
+.dashboard-logout-btn {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  background-color: #e74c3c !important;
+  z-index: 10;
+}
+
+/* --- CHAT WINDOW INTERIOR --- */
+.chat-window {
+  display: flex;
+  flex-direction: column;
+  background-color: #efeae2; /* WhatsApp chat background pattern color */
+}
+
+.chat-header {
+  height: 60px;
+  background-color: #f0f2f5;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  border-bottom: 1px solid #d1d7db;
+  color: #111b21;
+}
+
+.chat-body {
+  flex: 1;
+  overflow-y: scroll;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* The invisible container that pushes bubbles left or right */
+.message-container {
+  display: flex;
+  width: 100%;
+}
+
+.message-container.you {
+  justify-content: flex-end; /* Pushes to the right */
+}
+
+.message-container.other {
+  justify-content: flex-start; /* Pushes to the left */
+}
+
+/* The actual physical bubble */
+.message-bubble {
+  max-width: 60%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  position: relative;
+  box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+  text-align: left;
+}
+
+/* Your messages are green */
+.message-container.you .message-bubble {
+  background-color: #d9fdd3;
+  border-top-right-radius: 0;
+}
+
+/* Their messages are white */
+.message-container.other .message-bubble {
+  background-color: #ffffff;
+  border-top-left-radius: 0;
+}
+
+.message-text {
+  margin: 0;
+  font-size: 15px;
+  color: #111b21;
+}
+
+.message-meta {
+  font-size: 11px;
+  color: #667781;
+  text-align: right;
+  margin-top: 4px;
+}
+
+/* --- CHAT FOOTER --- */
+.chat-footer {
+  height: 65px;
+  background-color: #f0f2f5;
+  display: flex;
+  padding: 10px 20px;
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-footer input {
+  flex: 1;
+  height: 100%;
+  border-radius: 8px;
+  border: none;
+  padding: 0 15px;
+  font-size: 15px;
+  outline: none;
+}
+
+.chat-footer button {
+  height: 100%;
+  background-color: #00a884;
+  border-radius: 8px;
+  padding: 0 20px;
+}
+
+/* --- SIDEBAR SEARCH --- */
+.sidebar-search {
+  padding: 10px;
+  background-color: #f0f2f5;
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid #d1d7db;
+}
+
+.sidebar-search input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+}
+
+.sidebar-search button {
+  padding: 8px 15px;
+  background-color: #00a884;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.chat-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* --- TYPING INDICATOR --- */
+.typing-indicator {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: -5px;
+  margin-bottom: 5px;
+  padding-left: 5px;
+}
+
+.typing-indicator p {
+  background-color: transparent;
+  color: #00a884;
+  font-size: 13px;
+  margin: 0;
+  animation: pulse 1.5s infinite;
+}
+
+/* A soft fading animation to make it look active */
+@keyframes pulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+/* --- SIDEBAR HEADER DYNAMICS --- */
+.sidebar-search {
+  padding: 10px;
+  background-color: #f0f2f5;
+  border-bottom: 1px solid #d1d7db;
+}
+
+.search-row {
+  display: flex;
+  gap: 8px;
+}
+
+.search-row input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+}
+
+.search-row button {
+  padding: 8px 15px;
+  background-color: #00a884;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.group-toggle-btn {
+  background-color: #54656f !important;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+/* Group Creation Form */
+.group-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.group-form h4 {
+  margin: 0;
+  color: #111b21;
+  font-size: 14px;
+}
+
+.group-form input {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d7db;
+  outline: none;
+}
+
+.group-form-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.group-form-buttons button {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: white;
+}
+
+.confirm-btn { background-color: #00a884; }
+.cancel-btn { background-color: #e74c3c; }

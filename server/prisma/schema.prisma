@@ -10,16 +10,61 @@ datasource db {
 }
 
 model Message {
-  id          String   @id @default(uuid())
-  author      String   
-  roomId      String
-  text        String 
-  createdAt   DateTime @default(now())
+  id             String       @id @default(uuid())
+  text           String
+
+  senderId       String
+  // NEW: Added Cascade
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  conversationId String
+  // NEW: Added Cascade
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime     @default(now())
 }
 
 model User {
-  id        String   @id @default(uuid())
-  username  String   @unique // Prevents duplicate registrations
-  password  String   // Will safely store our bcrypt hashes
-  createdAt DateTime @default(now())
+  id             String   @id @default(uuid())
+  username       String   @unique
+  password       String   
+  createdAt      DateTime @default(now())
+
+  // NEW: The reverse connections
+  messages       Message[]
+  conversations  ConversationParticipant[]
+}
+
+// Define the two types of chats our app supports
+enum ConversationType {
+  PRIVATE
+  GROUP
+}
+
+model Conversation {
+  id            String                    @id @default(uuid())
+  name          String?                   // Optional: Only used for Group chats
+  type          ConversationType          @default(PRIVATE)
+  createdAt     DateTime                  @default(now())
+  
+  // The connections:
+  participants  ConversationParticipant[]
+  messages      Message[]
+}
+
+// The Bridge (Junction Table) linking Users and Conversations
+model ConversationParticipant {
+  id             String       @id @default(uuid())
+  
+  userId         String
+  // NEW: Added Cascade
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  conversationId String
+  // NEW: Added Cascade
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  joinedAt       DateTime     @default(now())
+
+  @@unique([userId, conversationId]) 
 }
