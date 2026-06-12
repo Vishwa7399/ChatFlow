@@ -1,43 +1,124 @@
 import React, { useState, useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
+import { MessageSquare, Lock, User, ArrowRight } from "lucide-react";
 
 function Login() {
-  const [localUsername, setLocalUsername] = useState("");
-  const [localPassword, setLocalPassword] = useState("");
-  
-  // Grab the global functions from our Context "Cloud"
   const { loginAccount, registerAccount } = useContext(AuthContext);
+  
+  const [isLogin, setIsLogin] = useState(true);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async () => {
-    const result = await loginAccount(localUsername, localPassword);
-    if (!result.success) alert(result.error);
-  };
-
-  const handleRegister = async () => {
-    const result = await registerAccount(localUsername, localPassword);
-    if (result.success) {
-      alert("Registration Successful! Please login.");
-    } else {
-      alert(result.error);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setFeedback({ type: "", message: "" });
+    if (!username || !password) {
+      return setFeedback({ type: "error", message: "All fields are required." });
     }
+
+    setIsLoading(true);
+    let result;
+
+    if (isLogin) {
+      result = await loginAccount(username, password);
+      if (!result.success) setFeedback({ type: "error", message: result.error });
+    } else {
+      result = await registerAccount(username, password);
+      if (result.success) {
+        setFeedback({ type: "success", message: "Account created! Please log in." });
+        setIsLogin(true);
+        setPassword(""); // Clear password for security, let them re-type to log in
+      } else {
+        setFeedback({ type: "error", message: result.error });
+      }
+    }
+    setIsLoading(false);
   };
 
   return (
-    <div className="joinChatContainer">
-      <h3>Welcome to ChatFlow</h3>
-      <input
-        type="text"
-        placeholder="Username..."
-        onChange={(e) => setLocalUsername(e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Password..."
-        onChange={(e) => setLocalPassword(e.target.value)}
-      />
-      <div className="auth-button-container">
-        <button onClick={handleLogin}>Login</button>
-        <button onClick={handleRegister}>Register</button>
+    // FULL SCREEN BACKGROUND
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4">
+      
+      {/* GLASSMORPHIC CARD */}
+      <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-800 p-8">
+        
+        {/* BRAND HEADER */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-4 border border-emerald-500/20">
+            <MessageSquare className="text-emerald-500" size={32} />
+          </div>
+          <h1 className="text-3xl font-bold text-slate-100 tracking-tight">ChatFlow</h1>
+          <p className="text-slate-400 mt-2 text-sm">
+            {isLogin ? "Welcome back to the conversation." : "Join the next generation of messaging."}
+          </p>
+        </div>
+
+        {/* FEEDBACK BANNER (Errors or Success messages) */}
+        {feedback.message && (
+          <div className={`p-3 mb-6 rounded-xl text-sm font-medium flex items-center justify-center ${
+            feedback.type === "error" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+          }`}>
+            {feedback.message}
+          </div>
+        )}
+
+        {/* AUTH FORM */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-400 ml-1">Username</label>
+            <div className="relative">
+              <User className="absolute left-3 top-3 text-slate-500" size={18} />
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter your username"
+                className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-400 ml-1">Password</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 text-slate-500" size={18} />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+          >
+            {isLoading ? "Processing..." : (isLogin ? "Sign In" : "Create Account")}
+            {!isLoading && <ArrowRight size={18} />}
+          </button>
+        </form>
+
+        {/* TOGGLE FOOTER */}
+        <div className="mt-8 text-center text-sm text-slate-400">
+          {isLogin ? "Don't have an account? " : "Already have an account? "}
+          <button
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setFeedback({ type: "", message: "" });
+            }}
+            className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+          >
+            {isLogin ? "Register now" : "Sign in here"}
+          </button>
+        </div>
+
       </div>
     </div>
   );
