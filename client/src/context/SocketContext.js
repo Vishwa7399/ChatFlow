@@ -11,10 +11,10 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     // 1. Only attempt to connect if the user is fully logged in
     if (isAuthenticated && token) {
-      
+
       // 2. Open the WebSocket, and pass the VIP Wristband right at the door
       const newSocket = io("http://localhost:3001", {
-        auth: { token: token } 
+        auth: { token: token }
       });
 
       setSocket(newSocket);

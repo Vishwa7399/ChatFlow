@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
       if (response.status === 200) {
         localStorage.setItem("chat_token", data.token);
         localStorage.setItem("chat_username", data.username);
-        
+
         setToken(data.token);
         setUsername(data.username);
         setIsAuthenticated(true);

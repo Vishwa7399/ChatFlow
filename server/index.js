@@ -20,7 +20,7 @@ const prisma = new PrismaClient({ adapter });
 // 4. EXPRESS & HTTP SERVER SETUP
 const app = express();
 app.use(cors());
-app.use(express.json()); 
+app.use(express.json());
 const server = http.createServer(app);
 
 app.post("/register", async (req, res) => {
@@ -52,9 +52,9 @@ app.post("/register", async (req, res) => {
     });
 
     // 4. THE RESPONSE: Tell the frontend it worked (but NEVER send the password back)
-    res.status(201).json({ 
-      message: "User registered successfully!", 
-      userId: newUser.id 
+    res.status(201).json({
+      message: "User registered successfully!",
+      userId: newUser.id
     });
 
   } catch (error) {
@@ -90,18 +90,18 @@ app.post("/login", async (req, res) => {
     // NEW: THE WRISTBAND - Generate the JWT
     // We pack their username inside, sign it with the .env secret, and make it expire in 24 hours.
     const token = jwt.sign(
-      { id: user.id, username: user.username }, 
-      process.env.JWT_SECRET, 
+      { id: user.id, username: user.username },
+      process.env.JWT_SECRET,
       { expiresIn: "24h" }
     );
 
     // NEW: THE RESPONSE - Let them in AND hand them the wristband! 
-    res.status(200).json({ 
+    res.status(200).json({
       message: "Login successful!",
       username: user.username,
       token: token // <-- Sending the newly minted token back to React
     });
-   
+
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -113,7 +113,7 @@ app.post("/login", async (req, res) => {
 const requireAuth = (req, res, next) => {
   // 1. Look for the token in the HTTP Headers
   const token = req.headers.authorization;
-  
+
   if (!token) {
     return res.status(401).json({ error: "Access Denied: No wristband provided." });
   }
@@ -121,12 +121,12 @@ const requireAuth = (req, res, next) => {
   try {
     // 2. Mathematically verify the token
     const verified = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     // 3. Attach the verified user's identity to the request so the route can use it
-    req.user = verified; 
-    
+    req.user = verified;
+
     // 4. Open the gate and let them through!
-    next(); 
+    next();
   } catch (err) {
     res.status(403).json({ error: "Access Denied: Fake or expired wristband." });
   }
@@ -140,8 +140,8 @@ app.post("/conversations", requireAuth, async (req, res) => {
     const myId = req.user.id;
 
     // Step A: Find the friend in the database
-    const friend = await prisma.user.findUnique({ 
-      where: { username: targetUsername } 
+    const friend = await prisma.user.findUnique({
+      where: { username: targetUsername }
     });
 
     if (!friend) {
@@ -180,7 +180,7 @@ app.post("/conversations", requireAuth, async (req, res) => {
         }
       }
     });
-    
+
     res.status(201).json(newChat);
 
   } catch (error) {
@@ -198,8 +198,8 @@ app.post("/conversations/group", requireAuth, async (req, res) => {
 
     // Step A: Find all friends in the database based on the array of usernames
     const friends = await prisma.user.findMany({
-      where: { 
-        username: { in: usernames } 
+      where: {
+        username: { in: usernames }
       }
     });
 
@@ -221,7 +221,7 @@ app.post("/conversations/group", requireAuth, async (req, res) => {
         }
       }
     });
-    
+
     res.status(201).json(newGroup);
 
   } catch (error) {
@@ -335,9 +335,9 @@ io.on("connection", (socket) => {
     try {
       // Step A: Verify the VIP wristband mathematically
       const decodedToken = jwt.verify(data.token, process.env.JWT_SECRET);
-      
+
       // Step B: Extract their real Database ID from the token
-      const verifiedSenderId = decodedToken.id; 
+      const verifiedSenderId = decodedToken.id;
       const verifiedUsername = decodedToken.username;
 
       // Step C: Save to PostgreSQL using our NEW Relational Schema
@@ -356,7 +356,7 @@ io.on("connection", (socket) => {
         author: verifiedUsername,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
-      
+
       socket.to(data.conversationId).emit("receive_message", secureBroadcastData);
 
     } catch (error) {

@@ -77,35 +77,35 @@ function Sidebar({ setCurrentChat }) {
     };
 
     // 3. Create a Group Chat
-  const handleCreateGroup = async () => {
-    if (groupName === "" || groupMembers === "") return;
-    
-    // Clean up the string: "Parth, Rahul , Neha" -> ["Parth", "Rahul", "Neha"]
-    const usernameArray = groupMembers.split(",").map(name => name.trim());
+    const handleCreateGroup = async () => {
+        if (groupName === "" || groupMembers === "") return;
 
-    try {
-      const response = await fetch("http://localhost:3001/conversations/group", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-        body: JSON.stringify({ name: groupName, usernames: usernameArray }),
-      });
-      const data = await response.json();
+        // Clean up the string: "Parth, Rahul , Neha" -> ["Parth", "Rahul", "Neha"]
+        const usernameArray = groupMembers.split(",").map(name => name.trim());
 
-      if (response.status === 201) {
-        setIsCreatingGroup(false); // Close the form
-        setGroupName("");
-        setGroupMembers("");
-        fetchConversations(); // Refresh the list to see our new group!
-      } else {
-        alert("Could not create group: " + data.error);
-      }
-    } catch (error) {
-      console.error("Failed to create group", error);
-    }
-  };
+        try {
+            const response = await fetch("http://localhost:3001/conversations/group", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: token,
+                },
+                body: JSON.stringify({ name: groupName, usernames: usernameArray }),
+            });
+            const data = await response.json();
+
+            if (response.status === 201) {
+                setIsCreatingGroup(false); // Close the form
+                setGroupName("");
+                setGroupMembers("");
+                fetchConversations(); // Refresh the list to see our new group!
+            } else {
+                alert("Could not create group: " + data.error);
+            }
+        } catch (error) {
+            console.error("Failed to create group", error);
+        }
+    };
 
     // 3. Helper function to figure out the friend's name
     const getChatName = (chat) => {
@@ -119,43 +119,43 @@ function Sidebar({ setCurrentChat }) {
     return (
         <div className="sidebar">
             {/* New Contact Input Area */}
-           {/* Dynamic Header: Toggles between Private Chat Search and Group Creation */}
-      <div className="sidebar-search">
-        {!isCreatingGroup ? (
-          <div className="search-row">
-            <input 
-              type="text" 
-              placeholder="Enter username..." 
-              value={newContact}
-              onChange={(e) => setNewContact(e.target.value)}
-            />
-            <button onClick={handleStartChat}>Chat</button>
-            <button className="group-toggle-btn" onClick={() => setIsCreatingGroup(true)} title="Create Group">
-              +
-            </button>
-          </div>
-        ) : (
-          <div className="group-form">
-            <h4>Create Group</h4>
-            <input 
-              type="text" 
-              placeholder="Group Name (e.g., Project Team)" 
-              value={groupName}
-              onChange={(e) => setGroupName(e.target.value)}
-            />
-            <input 
-              type="text" 
-              placeholder="Members (e.g., Parth, Rahul)" 
-              value={groupMembers}
-              onChange={(e) => setGroupMembers(e.target.value)}
-            />
-            <div className="group-form-buttons">
-              <button className="confirm-btn" onClick={handleCreateGroup}>Create</button>
-              <button className="cancel-btn" onClick={() => setIsCreatingGroup(false)}>Cancel</button>
+            {/* Dynamic Header: Toggles between Private Chat Search and Group Creation */}
+            <div className="sidebar-search">
+                {!isCreatingGroup ? (
+                    <div className="search-row">
+                        <input
+                            type="text"
+                            placeholder="Enter username..."
+                            value={newContact}
+                            onChange={(e) => setNewContact(e.target.value)}
+                        />
+                        <button onClick={handleStartChat}>Chat</button>
+                        <button className="group-toggle-btn" onClick={() => setIsCreatingGroup(true)} title="Create Group">
+                            +
+                        </button>
+                    </div>
+                ) : (
+                    <div className="group-form">
+                        <h4>Create Group</h4>
+                        <input
+                            type="text"
+                            placeholder="Group Name (e.g., Project Team)"
+                            value={groupName}
+                            onChange={(e) => setGroupName(e.target.value)}
+                        />
+                        <input
+                            type="text"
+                            placeholder="Members (e.g., Parth, Rahul)"
+                            value={groupMembers}
+                            onChange={(e) => setGroupMembers(e.target.value)}
+                        />
+                        <div className="group-form-buttons">
+                            <button className="confirm-btn" onClick={handleCreateGroup}>Create</button>
+                            <button className="cancel-btn" onClick={() => setIsCreatingGroup(false)}>Cancel</button>
+                        </div>
+                    </div>
+                )}
             </div>
-          </div>
-        )}
-      </div>
 
             <h3>Your Chats</h3>
 

@@ -5,17 +5,17 @@ import { SocketContext } from "../context/SocketContext";
 function ChatWindow({ currentChat }) {
   const { username, token } = useContext(AuthContext);
   const { socket } = useContext(SocketContext);
-  
+
   const [currentMessage, setCurrentMessage] = useState("");
   const [messageList, setMessageList] = useState([]);
-  
+
   // NEW: Typing Indicator State
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState("");
   const typingTimeoutRef = useRef(null); // The invisible timer!
 
   // 1. JOIN THE ROOM & CLEAR STATE
- // 1. JOIN THE ROOM & FETCH HISTORY
+  // 1. JOIN THE ROOM & FETCH HISTORY
   useEffect(() => {
     // A helper function to fetch history from our new route
     const fetchHistory = async () => {
@@ -24,7 +24,7 @@ function ChatWindow({ currentChat }) {
           headers: { Authorization: token }, // Showing the VIP wristband!
         });
         const data = await response.json();
-        
+
         if (response.status === 200) {
           setMessageList(data); // Populate the screen with the database history!
         } else {
@@ -38,7 +38,7 @@ function ChatWindow({ currentChat }) {
     // When the chat changes: Join the socket room, reset typing, and fetch history
     if (socket && currentChat) {
       socket.emit("join_conversation", currentChat.id);
-      setIsTyping(false); 
+      setIsTyping(false);
       fetchHistory(); // <-- The Magic Memory Call
     }
   }, [socket, currentChat, token]);
@@ -103,23 +103,23 @@ function ChatWindow({ currentChat }) {
     if (currentMessage !== "" && socket) {
       const messageData = {
         conversationId: currentChat.id,
-        token: token, 
+        token: token,
         message: currentMessage,
       };
 
       const myMessage = {
-        id: Math.random().toString(), 
+        id: Math.random().toString(),
         author: username,
         text: currentMessage,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
-      
+
       setMessageList((list) => [...list, myMessage]);
       socket.emit("send_message", messageData);
-      
+
       // Stop our own typing indicator instantly when we hit send
       socket.emit("stop_typing", currentChat.id);
-      setCurrentMessage(""); 
+      setCurrentMessage("");
     }
   };
 
@@ -130,8 +130,8 @@ function ChatWindow({ currentChat }) {
         <>
           <div className="chat-header">
             <h3>
-              {currentChat.type === "GROUP" 
-                ? currentChat.name 
+              {currentChat.type === "GROUP"
+                ? currentChat.name
                 : currentChat.participants?.find(p => p.user.username !== username)?.user.username}
             </h3>
           </div>
@@ -151,7 +151,7 @@ function ChatWindow({ currentChat }) {
                 </div>
               );
             })}
-            
+
             {/* NEW: The Typing Indicator UI */}
             {isTyping && typingUser !== username && (
               <div className="typing-indicator">
