@@ -366,13 +366,15 @@ io.on("connection", (socket) => {
 
   // 3. TYPING INDICATORS
   socket.on("typing", (data) => {
-    // Whisper to the room: "Hey, this specific user is typing!"
-    socket.to(data.conversationId).emit("display_typing", data.username);
+    // We MUST broadcast both the username and the specific conversationId
+    socket.to(data.conversationId).emit("display_typing", {
+      username: data.username,
+      conversationId: data.conversationId
+    });
   });
 
   socket.on("stop_typing", (conversationId) => {
-    // Whisper to the room: "Okay, they stopped."
-    socket.to(conversationId).emit("clear_typing");
+    socket.to(conversationId).emit("clear_typing", conversationId);
   });
 
   socket.on("disconnect", () => {

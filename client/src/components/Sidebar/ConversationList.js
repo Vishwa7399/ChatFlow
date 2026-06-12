@@ -1,16 +1,20 @@
 import React, { useState, useEffect, useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
+import { SocketContext } from "../../context/SocketContext"; // <-- NEW
 import { Search, Users, UserPlus } from "lucide-react";
 
 function ConversationList({ setCurrentChat }) {
   const { token, username } = useContext(AuthContext);
+  const { socket } = useContext(SocketContext); // <-- NEW
   
-  // Exact same state logic from your legacy file
   const [conversations, setConversations] = useState([]);
   const [newContact, setNewContact] = useState("");
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [groupMembers, setGroupMembers] = useState("");
+  
+  // NEW: Dictionary to track who is typing in which chat { conversationId: "username" }
+  const [typingChats, setTypingChats] = useState({});
 
   const fetchConversations = async () => {
     try {
@@ -27,6 +31,43 @@ function ConversationList({ setCurrentChat }) {
   useEffect(() => {
     fetchConversations();
   }, [token]);
+
+  // NEW: Join all chat rooms immediately so we hear global typing events
+  useEffect(() => {
+    if (socket && conversations.length > 0) {
+      conversations.forEach(chat => socket.emit("join_conversation", chat.id));
+    }
+  }, [socket, conversations]);
+
+  // NEW: Listen for global typing events
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleTyping = (data) => {
+      // STRICT FILTER: Ensure we have a valid ID before tracking it in the dictionary
+      if (data && data.conversationId && data.username !== username) {
+        setTypingChats(prev => ({ ...prev, [data.conversationId]: data.username }));
+      }
+    };
+
+    const handleStopTyping = (convId) => {
+      if (convId) {
+        setTypingChats(prev => {
+          const updated = { ...prev };
+          delete updated[convId];
+          return updated;
+        });
+      }
+    };
+
+    socket.on("display_typing", handleTyping);
+    socket.on("clear_typing", handleStopTyping);
+
+    return () => {
+      socket.off("display_typing", handleTyping);
+      socket.off("clear_typing", handleStopTyping);
+    };
+  }, [socket, username]);
 
   const handleStartChat = async (e) => {
     e.preventDefault();
@@ -67,7 +108,6 @@ function ConversationList({ setCurrentChat }) {
 
   return (
     <div className="flex flex-col h-full bg-slate-900/40">
-      
       {/* HEADER: Dynamic Search / Group Toggle Bar */}
       <div className="p-4 border-b border-slate-700/50">
         {!isCreatingGroup ? (
@@ -118,6 +158,9 @@ function ConversationList({ setCurrentChat }) {
         {conversations.map((chat) => {
           const isGroup = chat.type === "GROUP";
           const chatName = isGroup ? chat.name : chat.participants?.find(p => p.user.username !== username)?.user.username;
+          
+          // Check if someone is currently typing in this specific chat
+          const typingUser = typingChats[chat.id];
 
           return (
             <div
@@ -132,9 +175,18 @@ function ConversationList({ setCurrentChat }) {
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="text-sm font-semibold text-slate-200 truncate">{chatName}</h4>
+                
+                {/* NEW: Display Typing... or the default chat type */}
                 <p className="text-xs text-slate-400 truncate mt-0.5">
-                  {isGroup ? "Group Chat" : "Direct Message"}
+                  {typingUser ? (
+                    <span className="text-emerald-400 italic">
+                      {isGroup ? `${typingUser} is typing...` : "Typing..."}
+                    </span>
+                  ) : (
+                    isGroup ? "Group Chat" : "Direct Message"
+                  )}
                 </p>
+
               </div>
             </div>
           );

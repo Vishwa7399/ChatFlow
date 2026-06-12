@@ -8,16 +8,19 @@ function ChatContainer({ currentChat }) {
   const { socket } = useContext(SocketContext);
   
   const [messageList, setMessageList] = useState([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingUser, setTypingUser] = useState("");
+  
   const messagesEndRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
-  // Auto-scroll to bottom
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messageList]);
+  }, [messageList, isTyping]); // Scroll when a message arrives OR someone starts typing
 
   // 1. Fetch History & Join Socket Room
   useEffect(() => {
@@ -33,43 +36,78 @@ function ChatContainer({ currentChat }) {
 
     if (socket && currentChat) {
       socket.emit("join_conversation", currentChat.id);
+      setIsTyping(false); // Reset typing state on room change
       fetchHistory();
     }
   }, [socket, currentChat, token]);
 
-  // 2. Listen for Incoming Messages
+  // 2. Listen for Incoming Events (Messages & Typing)
+ // 2. Listen for Incoming Events (Messages & Typing)
+  // 2. Listen for Incoming Events (Messages & Typing)
   useEffect(() => {
     if (!socket) return;
+    
     const receiveMessageHandler = (data) => {
-      setMessageList((list) => [...list, data]);
+      if (data && data.conversationId === currentChat.id) {
+        setMessageList((list) => [...list, data]);
+        setIsTyping(false); 
+      }
     };
-    socket.on("receive_message", receiveMessageHandler);
-    return () => socket.off("receive_message", receiveMessageHandler);
-  }, [socket]);
+    
+    const displayTypingHandler = (data) => {
+      // STRICT FILTER: Only trigger if the event's ID matches the open window's ID
+      if (data && data.conversationId === currentChat.id) {
+        setIsTyping(true);
+        setTypingUser(data.username);
+      }
+    };
+    
+    const clearTypingHandler = (convId) => {
+      if (convId === currentChat.id) {
+        setIsTyping(false);
+        setTypingUser("");
+      }
+    };
 
-  // 3. Send Message Logic
+    socket.on("receive_message", receiveMessageHandler);
+    socket.on("display_typing", displayTypingHandler);
+    socket.on("clear_typing", clearTypingHandler);
+
+    return () => {
+      socket.off("receive_message", receiveMessageHandler);
+      socket.off("display_typing", displayTypingHandler);
+      socket.off("clear_typing", clearTypingHandler);
+    };
+  }, [socket, currentChat]); // Added currentChat as dependency
+
+  // 3. Handle Local Typing (Debounce Logic)
+  const handleTyping = () => {
+    if (socket && currentChat) {
+      socket.emit("typing", { conversationId: currentChat.id, username });
+      
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      
+      typingTimeoutRef.current = setTimeout(() => {
+        socket.emit("stop_typing", currentChat.id);
+      }, 2000);
+    }
+  };
+
+  // 4. Send Message Logic
   const handleSendMessage = (messageText) => {
     if (!socket) return;
     
-    const messageData = {
-      conversationId: currentChat.id,
-      token: token,
-      message: messageText,
-    };
-
-    // Optimistic UI update
+    const messageData = { conversationId: currentChat.id, token: token, message: messageText };
     const myMessage = {
-      id: Math.random().toString(),
-      author: username,
-      text: messageText,
+      id: Math.random().toString(), author: username, text: messageText,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
     
     setMessageList((list) => [...list, myMessage]);
     socket.emit("send_message", messageData);
+    socket.emit("stop_typing", currentChat.id); // Stop local typing indicator instantly
   };
 
-  // If no chat is selected, show a placeholder
   if (!currentChat) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-slate-900/50">
@@ -82,13 +120,11 @@ function ChatContainer({ currentChat }) {
     );
   }
 
-  // Calculate header name
   const isGroup = currentChat.type === "GROUP";
   const chatName = isGroup ? currentChat.name : currentChat.participants?.find(p => p.user.username !== username)?.user.username;
 
   return (
-    <div className="flex flex-col h-full bg-[#0b141a]"> {/* Slightly darker background specifically for chat area like WhatsApp */}
-      
+    <div className="flex flex-col h-full bg-[#0b141a]">
       {/* HEADER */}
       <div className="flex items-center gap-4 p-4 bg-slate-800/90 border-b border-slate-700/50 backdrop-blur-sm z-10">
         <div className="avatar">
@@ -98,7 +134,7 @@ function ChatContainer({ currentChat }) {
         </div>
         <div>
           <h3 className="font-semibold text-slate-200">{chatName}</h3>
-          <p className="text-xs text-slate-400">{isGroup ? "Group Chat" : "Offline"}</p> {/* We will make "Offline" dynamic later */}
+          <p className="text-xs text-slate-400">{isGroup ? "Group Chat" : "Offline"}</p>
         </div>
       </div>
 
@@ -118,11 +154,21 @@ function ChatContainer({ currentChat }) {
             </div>
           );
         })}
-        <div ref={messagesEndRef} /> {/* Invisible div for auto-scrolling */}
+        
+       {/* Modern Tailwind Typing Indicator */}
+        {isTyping && typingUser !== username && (
+          <div className="chat chat-start">
+            <div className="chat-bubble bg-slate-800 text-emerald-400 text-sm italic animate-pulse">
+              {isGroup ? `${typingUser} is typing...` : "Typing..."}
+            </div>
+          </div>
+        )}
+        
+        <div ref={messagesEndRef} />
       </div>
 
       {/* INPUT BAR */}
-      <MessageInput onSendMessage={handleSendMessage} />
+      <MessageInput onSendMessage={handleSendMessage} onTyping={handleTyping} />
     </div>
   );
 }
