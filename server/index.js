@@ -321,8 +321,21 @@ const io = new Server(server, {
 
 // 6. REAL-TIME EVENT LISTENERS
 // --- SECURE REAL-TIME SOCKET CONNECTION ---
+
+const userSocketMap = {};
+
 io.on("connection", (socket) => {
   console.log(`User Connected: ${socket.id}`);
+
+const userId = socket.user?.id?.toString() || socket.handshake.query.userId;
+
+  if (userId && userId !== "undefined") {
+    // Add them to the live dictionary
+    userSocketMap[userId] = socket.id;
+  }
+
+  // 3. BROADCAST THE LIVE LIST: Emit the keys (the user IDs) to ALL connected clients
+  io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
   // 1. JOIN A SECURE CONVERSATION
   socket.on("join_conversation", (conversationId) => {
@@ -378,7 +391,12 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("User Disconnected", socket.id);
+    console.log("User disconnected:", socket.id);
+    if (userId) {
+      delete userSocketMap[userId];
+      // Broadcast the newly updated list
+      io.emit("getOnlineUsers", Object.keys(userSocketMap));
+    }
   });
 });
 

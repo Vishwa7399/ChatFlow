@@ -3,7 +3,7 @@ import { AuthContext } from "../../context/AuthContext";
 import { SocketContext } from "../../context/SocketContext";
 import MessageInput from "./MessageInput";
 
-function ChatContainer({ currentChat }) {
+function ChatContainer({  currentChat, onlineUsers  }) {
   const { username, token } = useContext(AuthContext);
   const { socket } = useContext(SocketContext);
   
@@ -23,6 +23,7 @@ function ChatContainer({ currentChat }) {
   }, [messageList, isTyping]); // Scroll when a message arrives OR someone starts typing
 
   // 1. Fetch History & Join Socket Room
+  
   useEffect(() => {
     const fetchHistory = async () => {
       try {
@@ -34,15 +35,18 @@ function ChatContainer({ currentChat }) {
       } catch (error) { console.error("History fetch error:", error); }
     };
 
-    if (socket && currentChat) {
-      socket.emit("join_conversation", currentChat.id);
-      setIsTyping(false); // Reset typing state on room change
+    if (currentChat) {
+      // DECOUPLED: Fetch history immediately, even if the socket is lagging or dead
       fetchHistory();
+      setIsTyping(false); 
+    }
+
+    if (socket && currentChat) {
+      // Join the socket room independently
+      socket.emit("join_conversation", currentChat.id);
     }
   }, [socket, currentChat, token]);
 
-  // 2. Listen for Incoming Events (Messages & Typing)
- // 2. Listen for Incoming Events (Messages & Typing)
   // 2. Listen for Incoming Events (Messages & Typing)
   useEffect(() => {
     if (!socket) return;
@@ -120,37 +124,70 @@ function ChatContainer({ currentChat }) {
     );
   }
 
+// --- 1. THE CALCULATION LOGIC ---
   const isGroup = currentChat.type === "GROUP";
-  const chatName = isGroup ? currentChat.name : currentChat.participants?.find(p => p.user.username !== username)?.user.username;
+  const chatPartner = currentChat.participants?.find(p => p.user.username !== username)?.user;
+  const chatName = isGroup ? currentChat.name : chatPartner?.username;
 
+  // STRICT TYPE-SAFE FIX: Convert both the Socket array IDs and the Database IDs to strings
+  // This guarantees that PostgreSQL Integer '1' successfully matches Socket String '"1"'
+  const isOnline = !isGroup && Array.isArray(onlineUsers) && onlineUsers.some(onlineId => {
+    const socketIdStr = String(onlineId);
+    return socketIdStr === String(chatPartner?.id) || socketIdStr === String(chatPartner?.username);
+  });
+
+  // (Optional) Keep this log if you still need it to verify the data types
+  // console.log("DEBUG ONLINE STATUS:", { liveArrayFromSocket: onlineUsers, partnerId: chatPartner?.id, isOnline });
+
+  // 🕵️ SENIOR DIAGNOSTIC LOG: This will expose exactly what is misfiring
+  console.log("DEBUG ONLINE STATUS:", {
+    liveArrayFromSocket: onlineUsers,
+    partnerId: chatPartner?.id,
+    partnerMongoId: chatPartner?._id,
+    calculatedResult: isOnline
+  });
   return (
     <div className="flex flex-col h-full bg-[#0b141a]">
-      {/* HEADER */}
+      
+      {/* --- 2. THE DYNAMIC HEADER --- */}
       <div className="flex items-center gap-4 p-4 bg-slate-800/90 border-b border-slate-700/50 backdrop-blur-sm z-10">
         <div className="avatar">
-          <div className="w-10 rounded-full bg-slate-700">
+          {/* Dynamic Green Ring */}
+          <div className={`w-10 rounded-full bg-slate-700 ${isOnline ? 'ring ring-emerald-500 ring-offset-slate-800 ring-offset-2' : ''}`}>
              <img src={`https://ui-avatars.com/api/?name=${chatName || '?'}&background=${isGroup ? '0D8ABC' : '334155'}&color=fff`} alt="avatar" />
           </div>
         </div>
         <div>
           <h3 className="font-semibold text-slate-200">{chatName}</h3>
-          <p className="text-xs text-slate-400">{isGroup ? "Group Chat" : "Offline"}</p>
+          {/* Dynamic Green Text */}
+          <p className={`text-xs ${isOnline ? "text-emerald-400 font-medium" : "text-slate-400"}`}>
+            {isGroup ? "Group Chat" : (isOnline ? "Online" : "Offline")}
+          </p>
         </div>
       </div>
-
+      
       {/* MESSAGE THREAD */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
         {messageList.map((msg) => {
           const isMe = msg.author === username;
-          return (
-            <div key={msg.id} className={`chat ${isMe ? 'chat-end' : 'chat-start'}`}>
-              <div className="chat-header text-xs text-slate-400 mb-1 opacity-70">
+     return (
+            // RAW TAILWIND FIX: Forces items to align left or right without stretching
+            <div key={msg.id} className={`flex flex-col w-full ${isMe ? 'items-end' : 'items-start'}`}>
+              
+              <div className="text-xs text-slate-400 mb-1 opacity-70 px-1">
                 {!isMe && <span className="mr-1">{msg.author}</span>}
                 <time>{msg.time}</time>
               </div>
-              <div className={`chat-bubble ${isMe ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-200'}`}>
+              
+              {/* WhatsApp Style Bubbles: w-fit stops it from stretching, max-w limits width on long texts */}
+              <div className={`px-4 py-2 rounded-2xl w-fit max-w-[75%] break-words shadow-sm ${
+                isMe 
+                  ? 'bg-emerald-600 text-white rounded-tr-none' 
+                  : 'bg-slate-700 text-slate-200 rounded-tl-none'
+              }`}>
                 {msg.text}
               </div>
+
             </div>
           );
         })}
