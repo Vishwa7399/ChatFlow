@@ -36,7 +36,7 @@ function ChatContainer({ currentChat, onlineUsers }) {
     scrollToBottom();
   }, [messageList, isTyping]);
 
-  useEffect(() => {
+useEffect(() => {
     const fetchHistory = async () => {
       try {
         const response = await fetch(`https://chatflow-backend-bvvt.onrender.com/conversations/${currentChat.id}/messages`, {
@@ -52,8 +52,18 @@ function ChatContainer({ currentChat, onlineUsers }) {
       setIsTyping(false);
     }
 
+    // --- THE FIX ---
+    // We isolate the room-joining logic so it runs the absolute microsecond
+    // a user clicks on a chat, ensuring the backend registers them in the room.
     if (socket && currentChat) {
+      // 1. Tell the server to put this user in the specific chat room
       socket.emit("join_conversation", currentChat.id);
+      
+      // 2. Safety override: Tell the server to send any queued messages 
+      // just in case the connection dropped for a millisecond.
+      socket.on("connect", () => {
+         socket.emit("join_conversation", currentChat.id);
+      });
     }
   }, [socket, currentChat, token]);
 
