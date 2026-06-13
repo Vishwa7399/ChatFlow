@@ -312,9 +312,11 @@ app.get("/conversations", requireAuth, async (req, res) => {
 
 
 // 5. SOCKET.IO SETUP
+// 5. SOCKET.IO SETUP
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000", // Ensure this matches your React port
+    // This looks for a live URL first, and if it can't find one, it allows all (*) so your app doesn't crash.
+    origin: process.env.FRONTEND_URL || "*", 
     methods: ["GET", "POST"],
   },
 });
@@ -401,6 +403,8 @@ const userId = socket.user?.id?.toString() || socket.handshake.query.userId;
 });
 
 // 7. BOOT THE SERVER
-server.listen(3001, () => {
-  console.log("SERVER IS RUNNING ON PORT 3001");
+const PORT = process.env.PORT || 3001;
+
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
