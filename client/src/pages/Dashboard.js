@@ -1,5 +1,4 @@
 import React, { useState, useContext, useEffect } from "react";
-import { AuthContext } from "../context/AuthContext";
 import { SocketContext } from "../context/SocketContext"; // <-- NEW IMPORT
 import ProfileHeader from "../components/Sidebar/ProfileHeader"; 
 import ConversationList from "../components/Sidebar/ConversationList";

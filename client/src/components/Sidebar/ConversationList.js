@@ -27,8 +27,9 @@ function ConversationList({ setCurrentChat }) {
     }
   };
 
-  useEffect(() => {
+ useEffect(() => {
     fetchConversations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   useEffect(() => {
@@ -156,7 +157,7 @@ function ConversationList({ setCurrentChat }) {
         {conversations.map((chat) => {
           const isGroup = chat.type === "GROUP";
           const chatName = isGroup ? chat.name : chat.participants?.find(p => p.user.username !== username)?.user.username;
-          
+
           // Helper to extract 1 or 2 initials from the name (e.g. "Testing Team" -> "TT")
           const initials = chatName?.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() || "?";
           
