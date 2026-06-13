@@ -39,7 +39,7 @@ function ChatContainer({ currentChat, onlineUsers }) {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/conversations/${currentChat.id}/messages`, {
+        const response = await fetch(`https://chatflow-backend-bvvt.onrender.com/conversations/${currentChat.id}/messages`, {
           headers: { Authorization: token },
         });
         const data = await response.json();

@@ -20,7 +20,7 @@ function ChatWindow({ currentChat }) {
     // A helper function to fetch history from our new route
     const fetchHistory = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/conversations/${currentChat.id}/messages`, {
+        const response = await fetch(`https://chatflow-backend-bvvt.onrender.com/conversations/${currentChat.id}/messages`, {
           headers: { Authorization: token }, // Showing the VIP wristband!
         });
         const data = await response.json();

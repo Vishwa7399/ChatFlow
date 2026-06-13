@@ -311,12 +311,12 @@ app.get("/conversations", requireAuth, async (req, res) => {
 });
 
 
-// 5. SOCKET.IO SETUP
+
 // 5. SOCKET.IO SETUP
 const io = new Server(server, {
   cors: {
     // This looks for a live URL first, and if it can't find one, it allows all (*) so your app doesn't crash.
-    origin: process.env.FRONTEND_URL || "*", 
+    origin: process.env.FRONTEND_URL || "*",
     methods: ["GET", "POST"],
   },
 });
@@ -329,7 +329,7 @@ const userSocketMap = {};
 io.on("connection", (socket) => {
   console.log(`User Connected: ${socket.id}`);
 
-const userId = socket.user?.id?.toString() || socket.handshake.query.userId;
+  const userId = socket.user?.id?.toString() || socket.handshake.query.userId;
 
   if (userId && userId !== "undefined") {
     // Add them to the live dictionary

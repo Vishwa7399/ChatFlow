@@ -17,7 +17,7 @@ function ConversationList({ setCurrentChat }) {
 
   const fetchConversations = async () => {
     try {
-      const response = await fetch("http://localhost:3001/conversations", {
+      const response = await fetch("https://chatflow-backend-bvvt.onrender.com/conversations", {
         headers: { Authorization: token },
       });
       const data = await response.json();
@@ -69,7 +69,7 @@ function ConversationList({ setCurrentChat }) {
     e.preventDefault();
     if (!newContact) return;
     try {
-      const response = await fetch("http://localhost:3001/conversations", {
+      const response = await fetch("https://chatflow-backend-bvvt.onrender.com/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token },
         body: JSON.stringify({ targetUsername: newContact }),
@@ -88,7 +88,7 @@ function ConversationList({ setCurrentChat }) {
     if (!groupName || !groupMembers) return;
     const usernameArray = groupMembers.split(",").map(name => name.trim());
     try {
-      const response = await fetch("http://localhost:3001/conversations/group", {
+      const response = await fetch("https://chatflow-backend-bvvt.onrender.com/conversations/group", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token },
         body: JSON.stringify({ name: groupName, usernames: usernameArray }),

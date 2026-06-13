@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
   // Global Login Function
   const loginAccount = async (inputUsername, inputPassword) => {
     try {
-      const response = await fetch("http://localhost:3001/login", {
+      const response = await fetch("https://chatflow-backend-bvvt.onrender.com/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: inputUsername, password: inputPassword }),
@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }) => {
   // Global Register Function
   const registerAccount = async (inputUsername, inputPassword) => {
     try {
-      const response = await fetch("http://localhost:3001/register", {
+      const response = await fetch("https://chatflow-backend-bvvt.onrender.com/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: inputUsername, password: inputPassword }),

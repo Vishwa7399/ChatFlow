@@ -12,7 +12,7 @@ function Sidebar({ setCurrentChat }) {
     // 1. Fetch all my chats from the secure backend
     const fetchConversations = async () => {
         try {
-            const response = await fetch("http://localhost:3001/conversations", {
+            const response = await fetch("https://chatflow-backend-bvvt.onrender.com/conversations", {
                 headers: { Authorization: token },
             });
             const data = await response.json();
@@ -39,7 +39,7 @@ function Sidebar({ setCurrentChat }) {
         try {
             console.log("--- STARTING CHAT TRACE ---");
 
-            const response = await fetch("http://localhost:3001/conversations", {
+            const response = await fetch("https://chatflow-backend-bvvt.onrender.com/conversations", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -84,7 +84,7 @@ function Sidebar({ setCurrentChat }) {
         const usernameArray = groupMembers.split(",").map(name => name.trim());
 
         try {
-            const response = await fetch("http://localhost:3001/conversations/group", {
+            const response = await fetch("https://chatflow-backend-bvvt.onrender.com/conversations/group", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

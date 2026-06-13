@@ -15,7 +15,7 @@ export const SocketContextProvider = ({ children }) => {
     if (token && username) {
       
       // We pass the explicit USERNAME to the backend instead of the Database ID
-      const newSocket = io("http://localhost:3001", {
+      const newSocket = io("https://chatflow-backend-bvvt.onrender.com", {
         query: { userId: username } 
       });
 
