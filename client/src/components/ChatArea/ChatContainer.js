@@ -70,8 +70,16 @@ useEffect(() => {
   useEffect(() => {
     if (!socket) return;
     const receiveMessageHandler = (data) => {
-      if (data && data.conversationId === currentChat?.id) {
-        setMessageList((list) => [...list, data]);
+      // THE ULTIMATE DEBUGGER: This will print every message React receives
+      console.log("🔥 INCOMING WEBSOCKET DATA:", data); 
+
+      // Convert both IDs to strings to prevent strict equality failures (e.g., 12 === "12")
+      if (data && String(data.conversationId) === String(currentChat?.id)) {
+        setMessageList((list) => {
+          // Safety check: Prevent duplicate messages from rendering
+          if (list.some(msg => String(msg.id) === String(data.id))) return list;
+          return [...list, data];
+        });
         setIsTyping(false);
       }
     };
