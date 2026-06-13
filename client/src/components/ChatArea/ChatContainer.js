@@ -69,16 +69,31 @@ useEffect(() => {
 
   useEffect(() => {
     if (!socket) return;
-    const receiveMessageHandler = (data) => {
-      // THE ULTIMATE DEBUGGER: This will print every message React receives
-      console.log("🔥 INCOMING WEBSOCKET DATA:", data); 
+   const receiveMessageHandler = (rawMessage) => {
+      console.log("🔥 RAW DATA FROM SOCKET:", rawMessage);
 
-      // Convert both IDs to strings to prevent strict equality failures (e.g., 12 === "12")
-      if (data && String(data.conversationId) === String(currentChat?.id)) {
+      // THE ADAPTER: Reshape whatever the backend sends into exactly what React expects
+      const formattedMessage = {
+        id: rawMessage.id || Math.random().toString(),
+        // Catch the text whether the backend called it 'text', 'message', or 'content'
+        text: rawMessage.text || rawMessage.message || rawMessage.content || "",
+        // Dig into the nested sender object for the name, or default to the raw property
+        author: rawMessage.author || (rawMessage.sender && rawMessage.sender.username) || "Parth",
+        // Use the database creation time, or stamp it with the exact current time
+        time: rawMessage.time || (rawMessage.createdAt 
+          ? new Date(rawMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+          : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+      };
+
+      // Check if this message belongs in the current chat window
+      const incomingChatId = rawMessage.conversationId || rawMessage.conversation_id || rawMessage.chatId;
+
+      // Force it to render if it matches, OR if the backend forgot to send the ID
+      if (!incomingChatId || String(incomingChatId) === String(currentChat?.id)) {
         setMessageList((list) => {
-          // Safety check: Prevent duplicate messages from rendering
-          if (list.some(msg => String(msg.id) === String(data.id))) return list;
-          return [...list, data];
+          // Safety lock: Prevent the exact same message from rendering twice
+          if (rawMessage.id && list.some(msg => String(msg.id) === String(rawMessage.id))) return list;
+          return [...list, formattedMessage];
         });
         setIsTyping(false);
       }
