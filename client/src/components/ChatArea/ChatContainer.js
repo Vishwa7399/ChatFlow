@@ -69,8 +69,19 @@ useEffect(() => {
 
   useEffect(() => {
     if (!socket) return;
-   const receiveMessageHandler = (rawMessage) => {
-      console.log("🔥 RAW DATA FROM SOCKET:", rawMessage);
+ const receiveMessageHandler = (rawMessage) => {
+      // 1. Where is the ID hiding? Let's check everywhere Prisma might put it.
+      const incomingChatId = rawMessage.conversationId 
+        || rawMessage.conversation_id 
+        || rawMessage.chatId 
+        || (rawMessage.conversation && rawMessage.conversation.id);
+
+      // 2. THE DIAGNOSTIC LOG: This will tell us exactly what is failing!
+      console.log("🕵️ STRICT MATCH TEST:", {
+        backendSentThisID: incomingChatId,
+        reactExpectsThisID: currentChat?.id,
+        rawPayload: rawMessage
+      });
 
       const formattedMessage = {
         id: rawMessage.id || Math.random().toString(),
@@ -81,18 +92,16 @@ useEffect(() => {
           : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
       };
 
-      // Dig out the ID the backend sent
-      const incomingChatId = rawMessage.conversationId || rawMessage.conversation_id || rawMessage.chatId;
-
-      // --- THE FIX ---
-      // STRICT MATCH ONLY. If the incoming ID does not exactly match the 
-      // current open window's ID, the message stays invisible here!
-      if (incomingChatId && String(incomingChatId) === String(currentChat?.id)) {
+      // 3. The Smart Match: If the backend forgot to send the ID entirely, 
+      // we will trust the socket room and let it through (since Render already filtered it).
+      if (!incomingChatId || String(incomingChatId) === String(currentChat?.id)) {
         setMessageList((list) => {
           if (rawMessage.id && list.some(msg => String(msg.id) === String(rawMessage.id))) return list;
           return [...list, formattedMessage];
         });
         setIsTyping(false);
+      } else {
+        console.warn("🚫 Message blocked! ID mismatch.");
       }
     };
     const displayTypingHandler = (data) => {
