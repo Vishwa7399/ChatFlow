@@ -346,7 +346,7 @@ io.on("connection", (socket) => {
   });
 
   // 2. SEND A SECURE RELATIONAL MESSAGE
-  socket.on("send_message", async (data) => {
+ socket.on("send_message", async (data) => {
     try {
       // Step A: Verify the VIP wristband mathematically
       const decodedToken = jwt.verify(data.token, process.env.JWT_SECRET);
@@ -369,7 +369,8 @@ io.on("connection", (socket) => {
         id: savedMessage.id,
         text: savedMessage.text,
         author: verifiedUsername,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        conversationId: data.conversationId // --- THE FIX: Explicitly attaching the ID here! ---
       };
 
       socket.to(data.conversationId).emit("receive_message", secureBroadcastData);
