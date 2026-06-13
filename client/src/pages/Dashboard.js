@@ -6,7 +6,6 @@ import ConversationList from "../components/Sidebar/ConversationList";
 import ChatContainer from "../components/ChatArea/ChatContainer";
 
 function Dashboard() {
-  const { logoutAccount } = useContext(AuthContext);
   const { socket } = useContext(SocketContext); // <-- NEW: Grab the socket
   
   const [currentChat, setCurrentChat] = useState(null);
