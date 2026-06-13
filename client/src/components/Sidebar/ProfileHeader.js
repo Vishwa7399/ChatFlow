@@ -6,32 +6,27 @@ function ProfileHeader() {
   const { username, logoutAccount } = useContext(AuthContext);
 
   return (
-    // The Container: Glass-morphic dark background with a subtle bottom border
     <div className="flex items-center justify-between p-4 bg-slate-800/50 border-b border-slate-700/50">
       
       {/* Left Side: Avatar and User Info */}
       <div className="flex items-center gap-3">
         
-        {/* DaisyUI Avatar Component with an 'online' status dot */}
-        <div className="avatar online">
-          <div className="w-10 rounded-full bg-slate-600">
-            {/* Using a free API to dynamically generate a cool avatar from your username! */}
-            <img 
-              src={`https://ui-avatars.com/api/?name=${username}&background=0D8ABC&color=fff`} 
-              alt="User Avatar" 
-            />
-          </div>
+        {/* YOUR OWN PROFILE AVATAR (Top Left) */}
+        <div className="relative flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center text-[13px] font-bold text-white shadow-md border-[2px] border-slate-800 bg-gradient-to-br from-emerald-500 to-teal-600">
+          {username ? username.substring(0, 2).toUpperCase() : "ME"}
+          {/* Custom Online Dot */}
+          <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 border-[1.5px] border-slate-800 shadow-sm"></span>
         </div>
         
         <div>
           <h3 className="font-semibold text-slate-200">{username}</h3>
-          <p className="text-xs text-emerald-400">Online</p>
+          <p className="text-xs text-emerald-400 font-medium">Online</p>
         </div>
       </div>
 
       {/* Right Side: Action Buttons */}
       <div className="flex gap-2">
-        <button className="btn btn-circle btn-ghost btn-sm text-slate-400 hover:text-slate-200" title="Settings">
+        <button className="btn btn-circle btn-ghost btn-sm text-slate-400 hover:text-slate-200 transition-colors" title="Settings">
           <Settings size={18} />
         </button>
         

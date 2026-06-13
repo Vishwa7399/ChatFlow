@@ -18,6 +18,7 @@ function ChatContainer({ currentChat, onlineUsers }) {
   const isGroup = currentChat?.type === "GROUP";
   const chatPartner = currentChat?.participants?.find(p => p.user.username !== username)?.user;
   const chatName = isGroup ? currentChat?.name : chatPartner?.username;
+  const headerInitials = chatName?.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() || "?";
 
   const isOnline = React.useMemo(() => {
     if (!currentChat || isGroup || !onlineUsers || !chatPartner) return false;
@@ -123,23 +124,27 @@ function ChatContainer({ currentChat, onlineUsers }) {
     );
   }
 
-  // --- 4. RENDER UI ---
-  return (
+return (
     <div className="flex flex-col h-full bg-[#0b141a]">
       
+      {/* --- NEW HEADER START --- */}
       <div className="flex items-center gap-4 p-4 bg-slate-800/90 border-b border-slate-700/50 backdrop-blur-sm z-10">
-        <div className="avatar">
-          <div className={`w-10 rounded-full bg-slate-700 ${isOnline ? 'ring ring-emerald-500 ring-offset-slate-800 ring-offset-2' : ''}`}>
-             <img src={`https://ui-avatars.com/api/?name=${chatName || '?'}&background=${isGroup ? '0D8ABC' : '334155'}&color=fff`} alt="avatar" />
-          </div>
+        
+        {/* PREMIUM GRADIENT HEADER AVATAR */}
+        <div className={`relative flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center text-[13px] font-bold text-white shadow-md border-[2px] border-slate-800 transition-all ${
+          isGroup ? "bg-gradient-to-br from-indigo-500 to-purple-600" : "bg-gradient-to-br from-emerald-500 to-teal-600"
+        } ${isOnline && !isGroup ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-slate-800' : ''}`}>
+          {headerInitials}
         </div>
+
         <div>
           <h3 className="font-semibold text-slate-200">{chatName}</h3>
-          <p className={`text-xs ${isOnline ? "text-emerald-400 font-medium" : "text-slate-400"}`}>
+          <p className={`text-xs ${isOnline && !isGroup ? "text-emerald-400 font-medium" : "text-slate-400"}`}>
             {isGroup ? "Group Chat" : (isOnline ? "Online" : "Offline")}
           </p>
         </div>
       </div>
+      {/* --- NEW HEADER END --- */}
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
         {messageList.map((msg) => {
