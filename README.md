@@ -4,7 +4,7 @@
   <br>
 </h1>
 
-<h4 align="center">A high-performance, real-time full-stack messaging platform engineered for low-latency communication.</h4>
+<h4 align="center">A high-performance, real-time full-stack messaging platform engineered for zero-latency communication.</h4>
 
 <p align="center">
   <a href="#-overview">Overview</a> •
@@ -23,20 +23,20 @@
 </p>
 
 <p align="center">
-  <a href="YOUR_VERCEL_FRONTEND_URL_HERE">
+  <a href="https://chat-flow-geq5.vercel.app">
     <img src="https://img.shields.io/badge/Live_Demo-Available_Now-10B981?style=for-the-badge&logo=vercel" alt="Live Deployment">
   </a>
 </p>
 
 ---
 
-![ChatFlow Hero Image](https://via.placeholder.com/1200x600/0f172a/10b981?text=ChatFlow+Interface+Screenshot+or+Demo+GIF)
+![ChatFlow Hero Image](docs/hero.png)
 
 ## 🚀 Overview
 
 **ChatFlow** is a modern web application designed to demonstrate robust real-time bidirectional communication and relational data persistence. Moving beyond traditional HTTP polling, this application leverages persistent WebSocket connections to deliver instant messaging with zero perceivable delay. 
 
-Built with a focus on scalability and security, ChatFlow utilizes a custom JWT-based authentication middleware that guards both REST API endpoints and Socket.IO connection handshakes.
+Built with a focus on scalability and security, ChatFlow utilizes a custom JWT-based authentication middleware that guards both REST API endpoints and Socket.IO connection handshakes, ensuring strict cross-chat data isolation.
 
 ---
 
@@ -47,14 +47,12 @@ Built with a focus on scalability and security, ChatFlow utilizes a custom JWT-b
   <br>
   
   <p align="center">
-    <img src="https://via.placeholder.com/400x300/1e293b/38bdf8?text=Authentication+Screen" alt="Auth Screen" width="45%">
+    <img src="docs/login.png" alt="Auth Screen" width="45%">
     &nbsp; &nbsp;
-    <img src="https://via.placeholder.com/400x300/1e293b/38bdf8?text=Main+Dashboard" alt="Dashboard" width="45%">
+    <img src="docs/dashboard.png" alt="Dashboard" width="45%">
   </p>
   <p align="center">
-    <img src="https://via.placeholder.com/400x300/1e293b/38bdf8?text=Active+Group+Chat" alt="Group Chat" width="45%">
-    &nbsp; &nbsp;
-    <img src="https://via.placeholder.com/400x300/1e293b/38bdf8?text=Live+Typing+Indicators" alt="Typing Indicators" width="45%">
+    <img src="docs/group-chat.png" alt="Group Chat" width="70%">
   </p>
 </details>
 
@@ -64,9 +62,9 @@ Built with a focus on scalability and security, ChatFlow utilizes a custom JWT-b
 
 The application separates concerns into three distinct layers to ensure maintainability and efficient data flow:
 
-1. **The Client Layer (React):** Manages local UI state, securely stores authentication tokens, and maintains the active WebSocket connection.
-2. **The Transport & API Layer (Node/Express + Socket.IO):** Acts as the central nervous system. It validates JWTs for standard HTTP requests and manages a live dictionary mapping connected user IDs to specific socket instances for targeted packet broadcasting.
-3. **The Data Layer (Prisma + Serverless PostgreSQL):** Intercepts incoming message payloads, validates relational constraints (verifying group membership and user existence), and commits data to disk before authorizing the WebSocket broadcast.
+1. **The Client Layer (React/Vercel):** Manages local UI state, securely stores authentication tokens, and utilizes a dynamic data adapter to instantly format incoming UTC timestamps to the user's local timezone.
+2. **The Transport & API Layer (Node/Render):** Acts as the central nervous system. It validates JWTs for standard HTTP requests and strictly manages Socket.IO payloads, securely injecting and verifying `conversationId` parameters to prevent cross-chat data bleeding.
+3. **The Data Layer (Prisma/Neon DB):** Intercepts incoming message payloads, validates relational constraints (verifying group membership and user existence), and commits data to serverless PostgreSQL before authorizing the WebSocket broadcast.
 
 ---
 
@@ -92,27 +90,26 @@ The application separates concerns into three distinct layers to ensure maintain
 
 ## ✨ Features & Roadmap
 
-The development of ChatFlow is structured into defined phases. 
-
 ### Phase 1: Core Foundation (Completed)
-- [x] **Stateless Authentication:** Secure registration and login via JWT and bcrypt.
-- [x] **Real-Time Engine:** Instant bidirectional message delivery via WebSockets.
-- [x] **Personal Messaging (1-on-1):** Direct, private communication channels.
-- [x] **Group Chat Functionality:** Multi-user rooms with dynamic participant management.
-- [x] **Live Typing Indicators:** Real-time UI updates broadcasting "typing..." status.
-- [x] **Relational Persistence:** Permanent, structured chat history saved to PostgreSQL.
+✅ **Stateless Authentication:** Secure registration and login via JWT and bcrypt.
+✅ **Real-Time Engine:** Instant bidirectional message delivery via WebSockets.
+✅ **Strict Payload Routing:** Eliminates cross-chat bleeding via strict ID matching.
+✅ **Live Presence System:** Dynamic Online/Offline status tracking across the network.
+✅ **Group Chat Functionality:** Multi-user rooms with dynamic participant management.
+✅ **Live Typing Indicators:** Real-time UI updates broadcasting "typing..." status.
+✅ **Relational Persistence:** Permanent, structured chat history saved to PostgreSQL.
+✅ **Timezone Sync:** Automatic conversion from UTC database stamps to local browser time.
 
 ### Phase 2: Enhanced User Experience (Planned)
-- [ ] **Read Receipts & Last Seen:** Tracking message consumption and user activity state.
-- [ ] **Message Search:** Indexed database querying for historical message retrieval.
-- [ ] **Message Reactions:** Real-time emoji interactions mapped to specific message IDs.
-- [ ] **Responsive Overhaul & Dark Mode:** Context-aware theming and optimized mobile layouts.
+⏳ **Read Receipts & Last Seen:** Tracking message consumption and user activity state.
+⏳ **Message Search:** Indexed database querying for historical message retrieval.
+⏳ **Message Reactions:** Real-time emoji interactions mapped to specific message IDs.
+⏳ **Dark Mode Toggle:** Context-aware theming and optimized layouts.
 
 ### Phase 3: Advanced Capabilities (Planned)
-- [ ] **End-to-End Encryption:** Client-side key generation for absolute privacy.
-- [ ] **Media Transport:** Secure file and image sharing via AWS S3 / Cloudinary.
-- [ ] **Push Notifications:** Service worker integration for offline alerts.
-- [ ] **Voice Messages:** In-browser audio recording and BLOB transmission.
+⏳ **End-to-End Encryption:** Client-side key generation for absolute privacy.
+⏳ **Media Transport:** Secure file and image sharing via AWS S3 / Cloudinary.
+⏳ **Push Notifications:** Service worker integration for offline alerts.
 
 ---
 
@@ -120,10 +117,9 @@ The development of ChatFlow is structured into defined phases.
 
 ### Prerequisites
 * Node.js (v18.x or higher)
-* npm or yarn
 * A PostgreSQL database instance (Local or Cloud like [Neon.tech](https://neon.tech/))
 
 ### 1. Clone the Repository
 ```bash
-git clone [https://github.com/Vishwa-Prajapati/ChatFlow.git](https://github.com/Vishwa-Prajapati/ChatFlow.git)
+git clone [https://github.com/Vishwa7399/ChatFlow.git](https://github.com/Vishwa7399/ChatFlow.git)
 cd ChatFlow
