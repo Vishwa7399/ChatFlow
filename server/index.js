@@ -365,12 +365,16 @@ io.on("connection", (socket) => {
       });
 
       // Step D: Broadcast the message to the room, attaching the verified username
+     // Step D: Broadcast the message to the room, attaching the verified username
       const secureBroadcastData = {
         id: savedMessage.id,
         text: savedMessage.text,
         author: verifiedUsername,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        conversationId: data.conversationId // --- THE FIX: Explicitly attaching the ID here! ---
+        // --- THE FIX ---
+        // Instead of a formatted server-time string, send the raw database timestamp.
+        // The user's browser will do the math to convert it to their local timezone!
+        createdAt: savedMessage.createdAt, 
+        conversationId: data.conversationId
       };
 
       socket.to(data.conversationId).emit("receive_message", secureBroadcastData);
