@@ -91,25 +91,25 @@ The application separates concerns into three distinct layers to ensure maintain
 ## ✨ Features & Roadmap
 
 ### Phase 1: Core Foundation (Completed)
-✅ **Stateless Authentication:** Secure registration and login via JWT and bcrypt.
-✅ **Real-Time Engine:** Instant bidirectional message delivery via WebSockets.
-✅ **Strict Payload Routing:** Eliminates cross-chat bleeding via strict ID matching.
-✅ **Live Presence System:** Dynamic Online/Offline status tracking across the network.
-✅ **Group Chat Functionality:** Multi-user rooms with dynamic participant management.
-✅ **Live Typing Indicators:** Real-time UI updates broadcasting "typing..." status.
-✅ **Relational Persistence:** Permanent, structured chat history saved to PostgreSQL.
-✅ **Timezone Sync:** Automatic conversion from UTC database stamps to local browser time.
+- ✅ **Stateless Authentication:** Secure registration and login via JWT and bcrypt.
+- ✅ **Real-Time Engine:** Instant bidirectional message delivery via WebSockets.
+- ✅ **Strict Payload Routing:** Eliminates cross-chat bleeding via strict ID matching.
+- ✅ **Live Presence System:** Dynamic Online/Offline status tracking across the network.
+- ✅ **Group Chat Functionality:** Multi-user rooms with dynamic participant management.
+- ✅ **Live Typing Indicators:** Real-time UI updates broadcasting "typing..." status.
+- ✅ **Relational Persistence:** Permanent, structured chat history saved to PostgreSQL.
+- ✅ **Timezone Sync:** Automatic conversion from UTC database stamps to local browser time.
 
 ### Phase 2: Enhanced User Experience (Planned)
-⏳ **Read Receipts & Last Seen:** Tracking message consumption and user activity state.
-⏳ **Message Search:** Indexed database querying for historical message retrieval.
-⏳ **Message Reactions:** Real-time emoji interactions mapped to specific message IDs.
-⏳ **Dark Mode Toggle:** Context-aware theming and optimized layouts.
+- ⏳ **Read Receipts & Last Seen:** Tracking message consumption and user activity state.
+- ⏳ **Message Search:** Indexed database querying for historical message retrieval.
+- ⏳ **Message Reactions:** Real-time emoji interactions mapped to specific message IDs.
+- ⏳ **Dark Mode Toggle:** Context-aware theming and optimized layouts.
 
 ### Phase 3: Advanced Capabilities (Planned)
-⏳ **End-to-End Encryption:** Client-side key generation for absolute privacy.
-⏳ **Media Transport:** Secure file and image sharing via AWS S3 / Cloudinary.
-⏳ **Push Notifications:** Service worker integration for offline alerts.
+- ⏳ **End-to-End Encryption:** Client-side key generation for absolute privacy.
+- ⏳ **Media Transport:** Secure file and image sharing via AWS S3 / Cloudinary.
+- ⏳ **Push Notifications:** Service worker integration for offline alerts.
 
 ---
 
