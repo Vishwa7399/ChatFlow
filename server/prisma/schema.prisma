@@ -30,6 +30,9 @@ model User {
   password       String   
   createdAt      DateTime @default(now())
 
+// --- NEW E2EE FIELD ---
+  publicKey String?  @db.Text
+  
   // NEW: The reverse connections
   messages       Message[]
   conversations  ConversationParticipant[]

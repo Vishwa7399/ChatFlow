@@ -50,12 +50,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Global Register Function
-  const registerAccount = async (inputUsername, inputPassword) => {
+  const registerAccount = async (inputUsername, inputPassword, publicKey) => {
     try {
       const response = await fetch("https://chatflow-backend-bvvt.onrender.com/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: inputUsername, password: inputPassword }),
+        body: JSON.stringify({ username: inputUsername, password: inputPassword ,publicKey: publicKey}),
       });
       const data = await response.json();
 

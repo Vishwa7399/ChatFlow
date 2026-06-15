@@ -1,4 +1,5 @@
 import React, { useState, useContext } from "react";
+import { generateAndStoreKeyPair } from "../utils/encryption";
 import { AuthContext } from "../context/AuthContext";
 import { MessageSquare, Lock, User, ArrowRight, CheckCircle2 } from "lucide-react";
 
@@ -34,17 +35,22 @@ function Login() {
     if (isLogin) {
       result = await loginAccount(username, password);
       if (!result.success) setFeedback({ type: "error", message: result.error });
-    } else {
-      result = await registerAccount(username, password);
-      if (result.success) {
-        setFeedback({ type: "success", message: "Account created! Please log in." });
-        setIsLogin(true);
-        setPassword(""); 
-        setConfirmPassword(""); // Clear the confirm field too
-      } else {
-        setFeedback({ type: "error", message: result.error });
-      }
-    }
+ } else {
+  // 1. NEW: Generate the keys right before we call Context!
+  const generatedPublicKey = generateAndStoreKeyPair();
+
+  // 2. Pass the new Public Key to our AuthContext
+  result = await registerAccount(username, password, generatedPublicKey);
+
+  if (result.success) {
+    setFeedback({ type: "success", message: "Account created! Please log in." });
+    setIsLogin(true);
+    setPassword(""); 
+    setConfirmPassword(""); 
+  } else {
+    setFeedback({ type: "error", message: result.error });
+  }
+}
     setIsLoading(false);
   };
 

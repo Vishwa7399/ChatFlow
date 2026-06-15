@@ -25,7 +25,8 @@ const server = http.createServer(app);
 
 app.post("/register", async (req, res) => {
   // Grab the username and password from the frontend request
-  const { username, password } = req.body;
+  console.log("INCOMING REGISTRATION DATA:", req.body); // ADD THIS LINE
+const { username, password, publicKey } = req.body;
 
   try {
     // 1. SECURITY CHECK: Does this username already exist?
@@ -47,7 +48,8 @@ app.post("/register", async (req, res) => {
     const newUser = await prisma.user.create({
       data: {
         username: username,
-        password: hashedPassword, // Saving the hash!
+        password: hashedPassword,
+        publicKey: publicKey // 2. SAVE THE PADLOCK TO THE DATABASE!
       },
     });
 
