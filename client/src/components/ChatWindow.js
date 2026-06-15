@@ -8,6 +8,12 @@ function ChatWindow({ currentChat }) {
   const { username, token } = useContext(AuthContext);
   const { socket } = useContext(SocketContext);
 
+  // --- 🕵️ TECH LEAD DIAGNOSTIC LOGS ---
+  console.log("1. RAW CHAT DATA:", currentChat);
+  const testPartner = currentChat?.participants?.find(p => p.user.username !== username);
+  console.log("2. EXTRACTED PARTNER:", testPartner);
+  console.log("3. PARTNER PUBLIC KEY:", testPartner?.user?.publicKey);
+
   const [currentMessage, setCurrentMessage] = useState("");
   const [messageList, setMessageList] = useState([]);
 
@@ -22,7 +28,7 @@ function ChatWindow({ currentChat }) {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/conversations/${currentChat.id}/messages`, {
+      const response = await fetch(`https://chatflow-backend-bvvt.onrender.com/conversations/${currentChat.id}/messages`, {
           headers: { Authorization: token }, 
         });
         const data = await response.json();
