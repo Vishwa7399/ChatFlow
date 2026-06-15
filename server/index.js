@@ -289,29 +289,23 @@ app.get("/conversations", requireAuth, async (req, res) => {
   try {
     const myId = req.user.id;
 
-    // Find every conversation where myId exists inside the participants list
     const myConversations = await prisma.conversation.findMany({
       where: {
         participants: {
-          some: {
-            userId: myId
-          }
+          some: { userId: myId }
         }
       },
-      // Include the participant data so React knows WHO we are talking to
       include: {
         participants: {
           include: {
             user: {
-              // --- THE FIX: ADD publicKey: true ---
-              select: { username: true, publicKey: true} // Only send back the username, never the password!
+              // --- THE FIX: We MUST include the publicKey here! ---
+              select: { username: true, publicKey: true } 
             }
           }
         }
       },
-      orderBy: {
-        createdAt: 'desc' // Newest chats at the top
-      }
+      orderBy: { createdAt: 'desc' }
     });
 
     res.status(200).json(myConversations);
