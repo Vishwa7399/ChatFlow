@@ -1,6 +1,8 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
 import { AuthContext } from "../context/AuthContext";
 import { SocketContext } from "../context/SocketContext";
+// --- 1. IMPORT OUR CRYPTO ENGINE ---
+import { encryptMessage, decryptMessage } from "../utils/encryption";
 
 function ChatWindow({ currentChat }) {
   const { username, token } = useContext(AuthContext);
@@ -9,51 +11,64 @@ function ChatWindow({ currentChat }) {
   const [currentMessage, setCurrentMessage] = useState("");
   const [messageList, setMessageList] = useState([]);
 
-  // NEW: Typing Indicator State
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState("");
-  const typingTimeoutRef = useRef(null); // The invisible timer!
+  const typingTimeoutRef = useRef(null); 
 
-  // 1. JOIN THE ROOM & CLEAR STATE
-  // 1. JOIN THE ROOM & FETCH HISTORY
+  // --- Helper: Find the person we are talking to and grab their Padlock ---
+  const partner = currentChat?.participants?.find(p => p.user.username !== username);
+  const partnerPublicKey = partner?.user?.publicKey;
+
   useEffect(() => {
-    // A helper function to fetch history from our new route
     const fetchHistory = async () => {
       try {
-        const response = await fetch(`https://chatflow-backend-bvvt.onrender.com/conversations/${currentChat.id}/messages`, {
-          headers: { Authorization: token }, // Showing the VIP wristband!
+        const response = await fetch(`http://localhost:3001/conversations/${currentChat.id}/messages`, {
+          headers: { Authorization: token }, 
         });
         const data = await response.json();
 
         if (response.status === 200) {
-          setMessageList(data); // Populate the screen with the database history!
-        } else {
-          console.error("Failed to load history:", data.error);
+          // --- 2. DECRYPT THE DATABASE HISTORY ---
+          const decryptedHistory = data.map((msg) => {
+            let displayedText = msg.text;
+            
+            // If it's a private chat and we have their key, unlock the box!
+            if (currentChat.type === "PRIVATE" && partnerPublicKey) {
+                displayedText = decryptMessage(msg.text, partnerPublicKey);
+            }
+            
+            return { ...msg, text: displayedText };
+          });
+
+          setMessageList(decryptedHistory); 
         }
       } catch (error) {
         console.error("Network error fetching history:", error);
       }
     };
 
-    // When the chat changes: Join the socket room, reset typing, and fetch history
     if (socket && currentChat) {
       socket.emit("join_conversation", currentChat.id);
       setIsTyping(false);
-      fetchHistory(); // <-- The Magic Memory Call
+      fetchHistory(); 
     }
-  }, [socket, currentChat, token]);
+  }, [socket, currentChat, token, partnerPublicKey]);
 
-  // 2. LISTEN FOR INCOMING SOCKET EVENTS
   useEffect(() => {
     if (!socket) return;
 
-    // Handle incoming messages
     const receiveMessageHandler = (data) => {
-      setMessageList((list) => [...list, data]);
-      setIsTyping(false); // If they send a message, they obviously stopped typing!
+      let displayedText = data.text;
+
+      // --- 3. DECRYPT INCOMING LIVE MESSAGES ---
+      if (currentChat.type === "PRIVATE" && partnerPublicKey) {
+          displayedText = decryptMessage(data.text, partnerPublicKey);
+      }
+
+      setMessageList((list) => [...list, { ...data, text: displayedText }]);
+      setIsTyping(false); 
     };
 
-    // Handle typing signals
     const displayTypingHandler = (typingUsername) => {
       setIsTyping(true);
       setTypingUser(typingUsername);
@@ -73,57 +88,58 @@ function ChatWindow({ currentChat }) {
       socket.off("display_typing", displayTypingHandler);
       socket.off("clear_typing", clearTypingHandler);
     };
-  }, [socket]);
+  }, [socket, currentChat, partnerPublicKey]);
 
-  // 3. HANDLE TYPING INPUT (The Debounce Logic)
   const handleTyping = (event) => {
     setCurrentMessage(event.target.value);
 
     if (socket && currentChat) {
-      // Tell the server we are typing
       socket.emit("typing", {
         conversationId: currentChat.id,
         username: username,
       });
 
-      // Clear the previous 2-second timer if it exists
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
 
-      // Start a brand new 2-second timer
       typingTimeoutRef.current = setTimeout(() => {
         socket.emit("stop_typing", currentChat.id);
       }, 2000);
     }
   };
 
-  // 4. SEND A MESSAGE
   const sendMessage = () => {
     if (currentMessage !== "" && socket) {
+      
+      let messageToSend = currentMessage;
+
+      // --- 4. ENCRYPT THE MESSAGE BEFORE IT LEAVES THE BROWSER ---
+      if (currentChat.type === "PRIVATE" && partnerPublicKey) {
+          messageToSend = encryptMessage(currentMessage, partnerPublicKey);
+      }
+
       const messageData = {
         conversationId: currentChat.id,
         token: token,
-        message: currentMessage,
+        message: messageToSend, // Send the encrypted box!
       };
 
       const myMessage = {
         id: Math.random().toString(),
         author: username,
-        text: currentMessage,
+        text: currentMessage, // Keep it plaintext in our local UI so we can read what we just typed!
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
 
       setMessageList((list) => [...list, myMessage]);
       socket.emit("send_message", messageData);
 
-      // Stop our own typing indicator instantly when we hit send
       socket.emit("stop_typing", currentChat.id);
       setCurrentMessage("");
     }
   };
 
-  // --- UI RENDERING ---
   return (
     <div className="chat-window">
       {currentChat ? (
@@ -134,6 +150,12 @@ function ChatWindow({ currentChat }) {
                 ? currentChat.name
                 : currentChat.participants?.find(p => p.user.username !== username)?.user.username}
             </h3>
+            {/* NEW: UI Indicator for E2EE */}
+            {currentChat.type === "PRIVATE" && partnerPublicKey && (
+               <span style={{ fontSize: "12px", color: "#10b981", marginLeft: "10px" }}>
+                 🔒 End-to-End Encrypted
+               </span>
+            )}
           </div>
 
           <div className="chat-body">
@@ -152,7 +174,6 @@ function ChatWindow({ currentChat }) {
               );
             })}
 
-            {/* NEW: The Typing Indicator UI */}
             {isTyping && typingUser !== username && (
               <div className="typing-indicator">
                 <p><em>{typingUser} is typing...</em></p>
@@ -165,7 +186,7 @@ function ChatWindow({ currentChat }) {
               type="text"
               value={currentMessage}
               placeholder="Type a message..."
-              onChange={handleTyping} // NEW: Bound to our new function!
+              onChange={handleTyping} 
               onKeyPress={(event) => {
                 event.key === "Enter" && sendMessage();
               }}
@@ -182,4 +203,4 @@ function ChatWindow({ currentChat }) {
   );
 }
 
-export default ChatWindow;  
+export default ChatWindow;

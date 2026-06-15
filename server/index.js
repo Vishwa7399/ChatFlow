@@ -294,7 +294,8 @@ app.get("/conversations", requireAuth, async (req, res) => {
         participants: {
           include: {
             user: {
-              select: { username: true } // Only send back the username, never the password!
+              // --- THE FIX: ADD publicKey: true ---
+              select: { username: true, publicKey: true} // Only send back the username, never the password!
             }
           }
         }
