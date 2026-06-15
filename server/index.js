@@ -135,26 +135,20 @@ const requireAuth = (req, res, next) => {
 };
 
 // --- CONVERSATION ROUTES ---
-// 1. Start a new Private Chat (Upgraded with Duplicate Prevention)
+// 1. Start a new Private Chat (Upgraded with Padlocks!)
 app.post("/conversations", requireAuth, async (req, res) => {
   try {
     const { targetUsername } = req.body;
     const myId = req.user.id;
 
-    // Step A: Find the friend in the database
     const friend = await prisma.user.findUnique({
       where: { username: targetUsername }
     });
 
-    if (!friend) {
-      return res.status(404).json({ error: "User not found!" });
-    }
+    if (!friend) return res.status(404).json({ error: "User not found!" });
+    if (friend.id === myId) return res.status(400).json({ error: "You cannot chat with yourself." });
 
-    if (friend.id === myId) {
-      return res.status(400).json({ error: "You cannot chat with yourself." });
-    }
-
-    // Step B: NEW! Check if a private chat already exists between these two exact users
+    // Step B: Check if a private chat already exists
     const existingChat = await prisma.conversation.findFirst({
       where: {
         type: "PRIVATE",
@@ -162,10 +156,17 @@ app.post("/conversations", requireAuth, async (req, res) => {
           { participants: { some: { userId: myId } } },
           { participants: { some: { userId: friend.id } } }
         ]
+      },
+      // --- THE FIX: Include participants and their Public Keys! ---
+      include: {
+        participants: {
+          include: {
+            user: { select: { username: true, publicKey: true } }
+          }
+        }
       }
     });
 
-    // If a chat already exists, politely stop and return the existing one!
     if (existingChat) {
       return res.status(200).json(existingChat);
     }
@@ -179,6 +180,14 @@ app.post("/conversations", requireAuth, async (req, res) => {
             { userId: myId },
             { userId: friend.id }
           ]
+        }
+      },
+      // --- THE FIX: Include participants and their Public Keys for brand new chats! ---
+      include: {
+        participants: {
+          include: {
+            user: { select: { username: true, publicKey: true } }
+          }
         }
       }
     });
