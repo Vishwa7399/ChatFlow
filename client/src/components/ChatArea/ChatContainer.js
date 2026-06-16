@@ -2,6 +2,8 @@ import React, { useState, useContext, useEffect, useRef } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { SocketContext } from "../../context/SocketContext";
 import MessageInput from "./MessageInput";
+// --- 1. IMPORT THE ENCRYPTION ENGINE ---
+import { encryptMessage, decryptMessage } from "../../utils/encryption";
 
 function ChatContainer({ currentChat, onlineUsers }) {
   const { username, token } = useContext(AuthContext);
@@ -14,11 +16,14 @@ function ChatContainer({ currentChat, onlineUsers }) {
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  // --- 1. HOOKS: Move these ABOVE any early return ---
+  // --- HOOKS & VARIABLES ---
   const isGroup = currentChat?.type === "GROUP";
   const chatPartner = currentChat?.participants?.find(p => p.user.username !== username)?.user;
   const chatName = isGroup ? currentChat?.name : chatPartner?.username;
   const headerInitials = chatName?.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() || "?";
+  
+  // --- GRAB THE PADLOCK ---
+  const partnerPublicKey = chatPartner?.publicKey;
 
   const isOnline = React.useMemo(() => {
     if (!currentChat || isGroup || !onlineUsers || !chatPartner) return false;
@@ -27,7 +32,6 @@ function ChatContainer({ currentChat, onlineUsers }) {
     return onlineUsers.some(id => String(id) === partnerIdStr || String(id) === partnerNameStr);
   }, [onlineUsers, chatPartner, isGroup, currentChat]);
 
-  // --- 2. EXISTING LOGIC ---
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -36,14 +40,26 @@ function ChatContainer({ currentChat, onlineUsers }) {
     scrollToBottom();
   }, [messageList, isTyping]);
 
-useEffect(() => {
+  useEffect(() => {
     const fetchHistory = async () => {
       try {
         const response = await fetch(`https://chatflow-backend-bvvt.onrender.com/conversations/${currentChat.id}/messages`, {
           headers: { Authorization: token },
         });
         const data = await response.json();
-        if (response.ok) setMessageList(data);
+        
+        if (response.ok) {
+           // --- DECRYPT THE DATABASE HISTORY ---
+           const decryptedHistory = data.map((msg) => {
+             let displayedText = msg.text;
+             // Unlock the box if it is a private chat!
+             if (!isGroup && partnerPublicKey) {
+               displayedText = decryptMessage(msg.text, partnerPublicKey);
+             }
+             return { ...msg, text: displayedText };
+           });
+           setMessageList(decryptedHistory);
+        }
       } catch (error) { console.error("History fetch error:", error); }
     };
 
@@ -52,64 +68,55 @@ useEffect(() => {
       setIsTyping(false);
     }
 
-    // --- THE FIX ---
-    // We isolate the room-joining logic so it runs the absolute microsecond
-    // a user clicks on a chat, ensuring the backend registers them in the room.
     if (socket && currentChat) {
-      // 1. Tell the server to put this user in the specific chat room
       socket.emit("join_conversation", currentChat.id);
-      
-      // 2. Safety override: Tell the server to send any queued messages 
-      // just in case the connection dropped for a millisecond.
       socket.on("connect", () => {
          socket.emit("join_conversation", currentChat.id);
       });
     }
-  }, [socket, currentChat, token]);
+  }, [socket, currentChat, token, isGroup, partnerPublicKey]);
 
   useEffect(() => {
     if (!socket) return;
- const receiveMessageHandler = (rawMessage) => {
-      // 1. Where is the ID hiding? Let's check everywhere Prisma might put it.
+    
+    const receiveMessageHandler = (rawMessage) => {
       const incomingChatId = rawMessage.conversationId 
         || rawMessage.conversation_id 
         || rawMessage.chatId 
         || (rawMessage.conversation && rawMessage.conversation.id);
 
-      // 2. THE DIAGNOSTIC LOG: This will tell us exactly what is failing!
-      console.log("🕵️ STRICT MATCH TEST:", {
-        backendSentThisID: incomingChatId,
-        reactExpectsThisID: currentChat?.id,
-        rawPayload: rawMessage
-      });
+      let incomingText = rawMessage.text || rawMessage.message || rawMessage.content || "";
+
+      // --- DECRYPT INCOMING LIVE MESSAGES ---
+      if (!isGroup && partnerPublicKey) {
+         incomingText = decryptMessage(incomingText, partnerPublicKey);
+      }
 
       const formattedMessage = {
         id: rawMessage.id || Math.random().toString(),
-        text: rawMessage.text || rawMessage.message || rawMessage.content || "",
-        author: rawMessage.author || (rawMessage.sender && rawMessage.sender.username) || "Parth",
+        text: incomingText, // Pushing the decrypted text to the screen!
+        author: rawMessage.author || (rawMessage.sender && rawMessage.sender.username) || "Unknown",
         time: rawMessage.time || (rawMessage.createdAt 
           ? new Date(rawMessage.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
           : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
       };
 
-      // 3. The Smart Match: If the backend forgot to send the ID entirely, 
-      // we will trust the socket room and let it through (since Render already filtered it).
       if (!incomingChatId || String(incomingChatId) === String(currentChat?.id)) {
         setMessageList((list) => {
           if (rawMessage.id && list.some(msg => String(msg.id) === String(rawMessage.id))) return list;
           return [...list, formattedMessage];
         });
         setIsTyping(false);
-      } else {
-        console.warn("🚫 Message blocked! ID mismatch.");
       }
     };
+
     const displayTypingHandler = (data) => {
       if (data && data.conversationId === currentChat?.id) {
         setIsTyping(true);
         setTypingUser(data.username);
       }
     };
+
     const clearTypingHandler = (convId) => {
       if (convId === currentChat?.id) {
         setIsTyping(false);
@@ -126,7 +133,7 @@ useEffect(() => {
       socket.off("display_typing", displayTypingHandler);
       socket.off("clear_typing", clearTypingHandler);
     };
-  }, [socket, currentChat]);
+  }, [socket, currentChat, isGroup, partnerPublicKey]);
 
   const handleTyping = () => {
     if (socket && currentChat) {
@@ -140,17 +147,31 @@ useEffect(() => {
 
   const handleSendMessage = (messageText) => {
     if (!socket) return;
-    const messageData = { conversationId: currentChat.id, token: token, message: messageText };
+    
+    let finalMessageToSend = messageText;
+
+    // --- ENCRYPT OUTGOING MESSAGES BEFORE LEAVING THE BROWSER ---
+    if (!isGroup && partnerPublicKey) {
+        finalMessageToSend = encryptMessage(messageText, partnerPublicKey);
+        console.log("🔒 Message Locked! Ciphertext:", finalMessageToSend);
+    } else {
+        console.warn("🚨 Bypassed Encryption! Missing Padlock or Group Chat.");
+    }
+
+    const messageData = { conversationId: currentChat.id, token: token, message: finalMessageToSend };
+    
     const myMessage = {
-      id: Math.random().toString(), author: username, text: messageText,
+      id: Math.random().toString(), 
+      author: username, 
+      text: messageText, // Keep it plaintext in OUR local UI so we can read it!
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
+    
     setMessageList((list) => [...list, myMessage]);
     socket.emit("send_message", messageData);
     socket.emit("stop_typing", currentChat.id);
   };
 
-  // --- 3. EARLY RETURN ---
   if (!currentChat) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-slate-900/50">
@@ -166,10 +187,8 @@ useEffect(() => {
 return (
     <div className="flex flex-col h-full bg-[#0b141a]">
       
-      {/* --- NEW HEADER START --- */}
       <div className="flex items-center gap-4 p-4 bg-slate-800/90 border-b border-slate-700/50 backdrop-blur-sm z-10">
         
-        {/* PREMIUM GRADIENT HEADER AVATAR */}
         <div className={`relative flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center text-[13px] font-bold text-white shadow-md border-[2px] border-slate-800 transition-all ${
           isGroup ? "bg-gradient-to-br from-indigo-500 to-purple-600" : "bg-gradient-to-br from-emerald-500 to-teal-600"
         } ${isOnline && !isGroup ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-slate-800' : ''}`}>
@@ -177,13 +196,20 @@ return (
         </div>
 
         <div>
-          <h3 className="font-semibold text-slate-200">{chatName}</h3>
+          <h3 className="font-semibold text-slate-200 flex items-center gap-2">
+            {chatName}
+            {/* --- E2EE BADGE --- */}
+            {!isGroup && partnerPublicKey && (
+              <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20 font-medium">
+                🔒 E2EE
+              </span>
+            )}
+          </h3>
           <p className={`text-xs ${isOnline && !isGroup ? "text-emerald-400 font-medium" : "text-slate-400"}`}>
             {isGroup ? "Group Chat" : (isOnline ? "Online" : "Offline")}
           </p>
         </div>
       </div>
-      {/* --- NEW HEADER END --- */}
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
         {messageList.map((msg) => {

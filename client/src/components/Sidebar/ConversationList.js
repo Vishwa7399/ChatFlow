@@ -70,7 +70,8 @@ function ConversationList({ setCurrentChat }) {
     e.preventDefault();
     if (!newContact) return;
     try {
-      const response = await fetch("https://chatflow-backend-bvvt.onrender.com/conversations", {
+      // Update to point to your backend on 3001
+const response = await fetch("https://chatflow-backend-bvvt.onrender.com/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token },
         body: JSON.stringify({ targetUsername: newContact }),
@@ -89,7 +90,7 @@ function ConversationList({ setCurrentChat }) {
     if (!groupName || !groupMembers) return;
     const usernameArray = groupMembers.split(",").map(name => name.trim());
     try {
-      const response = await fetch("https://chatflow-backend-bvvt.onrender.com/conversations/group", {
+      const response = await fetch("http://localhost:3000/conversations/group", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: token },
         body: JSON.stringify({ name: groupName, usernames: usernameArray }),

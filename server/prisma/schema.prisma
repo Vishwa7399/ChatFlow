@@ -32,7 +32,7 @@ model User {
 
 // --- NEW E2EE FIELD ---
   publicKey String?  @db.Text
-  
+  encryptedPrivateKey String?
   // NEW: The reverse connections
   messages       Message[]
   conversations  ConversationParticipant[]

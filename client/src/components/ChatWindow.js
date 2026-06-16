@@ -115,34 +115,45 @@ function ChatWindow({ currentChat }) {
     }
   };
 
-  const sendMessage = () => {
+ const sendMessage = () => {
     if (currentMessage !== "" && socket) {
-      
-      let messageToSend = currentMessage;
+      try {
+        console.log("1. ATTEMPTING TO SEND:", currentMessage);
+        
+        let messageToSend = currentMessage;
 
-      // --- 4. ENCRYPT THE MESSAGE BEFORE IT LEAVES THE BROWSER ---
-      if (currentChat.type === "PRIVATE" && partnerPublicKey) {
-          messageToSend = encryptMessage(currentMessage, partnerPublicKey);
+        // --- 4. ENCRYPT THE MESSAGE ---
+        if (currentChat.type === "PRIVATE" && partnerPublicKey) {
+            console.log("2. FOUND PADLOCK, ENCRYPTING...");
+            messageToSend = encryptMessage(currentMessage, partnerPublicKey);
+            console.log("3. ENCRYPTION SUCCESS! CIPHERTEXT:", messageToSend);
+        } else {
+            console.warn("🚨 WARNING: Bypassed Encryption! Missing Padlock or not a Private Chat.");
+        }
+
+        const messageData = {
+          conversationId: currentChat.id,
+          token: token,
+          message: messageToSend,
+        };
+
+        const myMessage = {
+          id: Math.random().toString(),
+          author: username,
+          text: currentMessage,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        setMessageList((list) => [...list, myMessage]);
+        socket.emit("send_message", messageData);
+        console.log("4. MESSAGE EMITTED TO SERVER!");
+
+        socket.emit("stop_typing", currentChat.id);
+        setCurrentMessage("");
+        
+      } catch (error) {
+        console.error("🚨 CRITICAL ENCRYPTION ERROR:", error);
       }
-
-      const messageData = {
-        conversationId: currentChat.id,
-        token: token,
-        message: messageToSend, // Send the encrypted box!
-      };
-
-      const myMessage = {
-        id: Math.random().toString(),
-        author: username,
-        text: currentMessage, // Keep it plaintext in our local UI so we can read what we just typed!
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-
-      setMessageList((list) => [...list, myMessage]);
-      socket.emit("send_message", messageData);
-
-      socket.emit("stop_typing", currentChat.id);
-      setCurrentMessage("");
     }
   };
 

@@ -7,7 +7,7 @@ const { Server } = require("socket.io");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-// 2. PRISMA 7 DRIVER ADAPTER IMPORTS
+// 2. PRISMA DRIVER ADAPTER IMPORTS
 const { Pool } = require("pg");
 const { PrismaPg } = require("@prisma/adapter-pg");
 const { PrismaClient } = require("@prisma/client");
@@ -23,87 +23,71 @@ app.use(cors());
 app.use(express.json());
 const server = http.createServer(app);
 
+// --- AUTHENTICATION ROUTES ---
+
 app.post("/register", async (req, res) => {
-  // Grab the username and password from the frontend request
-  console.log("INCOMING REGISTRATION DATA:", req.body); // ADD THIS LINE
-const { username, password, publicKey } = req.body;
+  const { username, password, publicKey, encryptedPrivateKey} = req.body;
 
   try {
-    // 1. SECURITY CHECK: Does this username already exist?
     const existingUser = await prisma.user.findUnique({
       where: { username: username },
     });
 
     if (existingUser) {
-      // 400 Bad Request: Stop the process and tell the frontend why
       return res.status(400).json({ error: "Username already taken." });
     }
 
-    // 2. THE MATH: Hash the password
-    // The "10" is the "Salt Rounds" - it dictates how complex the math is. 
-    // 10 is the current industry balance between speed and extreme security.
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 3. THE SAVE: Store the user with the scrambled hash, NOT the real password
     const newUser = await prisma.user.create({
       data: {
         username: username,
         password: hashedPassword,
-        publicKey: publicKey // 2. SAVE THE PADLOCK TO THE DATABASE!
+        publicKey: publicKey, // --- SAVING THE PADLOCK ---
+        encryptedPrivateKey: encryptedPrivateKey // --- SAVING THE VAULT ---
       },
     });
 
-    // 4. THE RESPONSE: Tell the frontend it worked (but NEVER send the password back)
     res.status(201).json({
       message: "User registered successfully!",
       userId: newUser.id
     });
-
   } catch (error) {
     console.error("Registration error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-
-// Login Endpoint
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    // 1. SECURITY CHECK: Does this user even exist?
     const user = await prisma.user.findUnique({
       where: { username: username },
     });
 
     if (!user) {
-      // 400 Bad Request: Stop and tell the frontend the user wasn't found
       return res.status(400).json({ error: "User not found." });
     }
 
-    // 2. THE MATH: Compare the typed password against the saved hash
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      // 401 Unauthorized: Stop and tell the frontend the password was wrong
       return res.status(401).json({ error: "Incorrect password." });
     }
 
-    // NEW: THE WRISTBAND - Generate the JWT
-    // We pack their username inside, sign it with the .env secret, and make it expire in 24 hours.
     const token = jwt.sign(
       { id: user.id, username: user.username },
       process.env.JWT_SECRET,
       { expiresIn: "24h" }
     );
 
-    // NEW: THE RESPONSE - Let them in AND hand them the wristband! 
     res.status(200).json({
       message: "Login successful!",
       username: user.username,
-      token: token // <-- Sending the newly minted token back to React
+      token: token,
+       encryptedPrivateKey: user.encryptedPrivateKey // --- OPENING THE VAULT ---
     });
-
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -111,9 +95,7 @@ app.post("/login", async (req, res) => {
 });
 
 // --- HTTP SECURITY MIDDLEWARE ---
-// This function sits in front of our protected routes to check the VIP wristband.
 const requireAuth = (req, res, next) => {
-  // 1. Look for the token in the HTTP Headers
   const token = req.headers.authorization;
 
   if (!token) {
@@ -121,13 +103,8 @@ const requireAuth = (req, res, next) => {
   }
 
   try {
-    // 2. Mathematically verify the token
     const verified = jwt.verify(token, process.env.JWT_SECRET);
-
-    // 3. Attach the verified user's identity to the request so the route can use it
     req.user = verified;
-
-    // 4. Open the gate and let them through!
     next();
   } catch (err) {
     res.status(403).json({ error: "Access Denied: Fake or expired wristband." });
@@ -135,7 +112,7 @@ const requireAuth = (req, res, next) => {
 };
 
 // --- CONVERSATION ROUTES ---
-// 1. Start a new Private Chat (Upgraded with Padlocks!)
+
 app.post("/conversations", requireAuth, async (req, res) => {
   try {
     const { targetUsername } = req.body;
@@ -148,7 +125,6 @@ app.post("/conversations", requireAuth, async (req, res) => {
     if (!friend) return res.status(404).json({ error: "User not found!" });
     if (friend.id === myId) return res.status(400).json({ error: "You cannot chat with yourself." });
 
-    // Step B: Check if a private chat already exists
     const existingChat = await prisma.conversation.findFirst({
       where: {
         type: "PRIVATE",
@@ -157,7 +133,6 @@ app.post("/conversations", requireAuth, async (req, res) => {
           { participants: { some: { userId: friend.id } } }
         ]
       },
-      // --- THE FIX: Include participants and their Public Keys! ---
       include: {
         participants: {
           include: {
@@ -171,7 +146,6 @@ app.post("/conversations", requireAuth, async (req, res) => {
       return res.status(200).json(existingChat);
     }
 
-    // Step C: If no chat exists, create a brand new one
     const newChat = await prisma.conversation.create({
       data: {
         type: "PRIVATE",
@@ -182,7 +156,6 @@ app.post("/conversations", requireAuth, async (req, res) => {
           ]
         }
       },
-      // --- THE FIX: Include participants and their Public Keys for brand new chats! ---
       include: {
         participants: {
           include: {
@@ -200,91 +173,6 @@ app.post("/conversations", requireAuth, async (req, res) => {
   }
 });
 
-
-// 3. Start a new Group Chat
-app.post("/conversations/group", requireAuth, async (req, res) => {
-  try {
-    const { name, usernames } = req.body; // Expecting an array: ["Parth", "Rahul"]
-    const myId = req.user.id;
-
-    // Step A: Find all friends in the database based on the array of usernames
-    const friends = await prisma.user.findMany({
-      where: {
-        username: { in: usernames }
-      }
-    });
-
-    if (friends.length === 0) {
-      return res.status(400).json({ error: "Could not find any valid users." });
-    }
-
-    // Step B: Build the participant list (Include all friends + Myself)
-    const participantData = friends.map(friend => ({ userId: friend.id }));
-    participantData.push({ userId: myId });
-
-    // Step C: Create the Group Conversation and link EVERYONE at once
-    const newGroup = await prisma.conversation.create({
-      data: {
-        type: "GROUP",
-        name: name, // Groups get actual names!
-        participants: {
-          create: participantData
-        }
-      }
-    });
-
-    res.status(201).json(newGroup);
-
-  } catch (error) {
-    console.error("Error creating group:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// 4. Fetch Message History for a specific chat
-app.get("/conversations/:id/messages", requireAuth, async (req, res) => {
-  try {
-    const conversationId = req.params.id;
-    const myId = req.user.id; // From our JWT bouncer!
-
-    // Step A: SECURITY CHECK - Is this user actually a participant in this chat?
-    const isParticipant = await prisma.conversationParticipant.findFirst({
-      where: {
-        conversationId: conversationId,
-        userId: myId
-      }
-    });
-
-    if (!isParticipant) {
-      return res.status(403).json({ error: "Security Alert: You are not in this chat." });
-    }
-
-    // Step B: Fetch all messages for this chat, including who sent them
-    const messages = await prisma.message.findMany({
-      where: { conversationId: conversationId },
-      include: {
-        sender: { select: { username: true } } // We need the author's name for the UI!
-      },
-      orderBy: { createdAt: 'asc' } // Oldest at the top, newest at the bottom
-    });
-
-    // Step C: Format the database data to perfectly match our React UI structure
-    const formattedMessages = messages.map(msg => ({
-      id: msg.id,
-      author: msg.sender.username,
-      text: msg.text,
-      time: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }));
-
-    res.status(200).json(formattedMessages);
-
-  } catch (error) {
-    console.error("Error fetching messages:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// 2. Fetch all my chats for the Sidebar
 app.get("/conversations", requireAuth, async (req, res) => {
   try {
     const myId = req.user.id;
@@ -298,10 +186,7 @@ app.get("/conversations", requireAuth, async (req, res) => {
       include: {
         participants: {
           include: {
-            user: {
-              // --- THE FIX: We MUST include the publicKey here! ---
-              select: { username: true, publicKey: true } 
-            }
+            user: { select: { username: true, publicKey: true } } 
           }
         }
       },
@@ -316,19 +201,74 @@ app.get("/conversations", requireAuth, async (req, res) => {
   }
 });
 
+app.post("/conversations/group", requireAuth, async (req, res) => {
+  try {
+    const { name, usernames } = req.body; 
+    const myId = req.user.id;
+
+    const friends = await prisma.user.findMany({
+      where: { username: { in: usernames } }
+    });
+
+    if (friends.length === 0) return res.status(400).json({ error: "Could not find any valid users." });
+
+    const participantData = friends.map(friend => ({ userId: friend.id }));
+    participantData.push({ userId: myId });
+
+    const newGroup = await prisma.conversation.create({
+      data: {
+        type: "GROUP",
+        name: name,
+        participants: { create: participantData }
+      }
+    });
+
+    res.status(201).json(newGroup);
+  } catch (error) {
+    console.error("Error creating group:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/conversations/:id/messages", requireAuth, async (req, res) => {
+  try {
+    const conversationId = req.params.id;
+    const myId = req.user.id; 
+
+    const isParticipant = await prisma.conversationParticipant.findFirst({
+      where: { conversationId: conversationId, userId: myId }
+    });
+
+    if (!isParticipant) return res.status(403).json({ error: "Security Alert: You are not in this chat." });
+
+    const messages = await prisma.message.findMany({
+      where: { conversationId: conversationId },
+      include: { sender: { select: { username: true } } }, 
+      orderBy: { createdAt: 'asc' } 
+    });
+
+    const formattedMessages = messages.map(msg => ({
+      id: msg.id,
+      author: msg.sender.username,
+      text: msg.text,
+      time: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }));
+
+    res.status(200).json(formattedMessages);
+  } catch (error) {
+    console.error("Error fetching messages:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 
-// 5. SOCKET.IO SETUP
+// --- SOCKET.IO SETUP ---
 const io = new Server(server, {
   cors: {
-    // This looks for a live URL first, and if it can't find one, it allows all (*) so your app doesn't crash.
     origin: process.env.FRONTEND_URL || "*",
     methods: ["GET", "POST"],
   },
 });
-
-// 6. REAL-TIME EVENT LISTENERS
-// --- SECURE REAL-TIME SOCKET CONNECTION ---
 
 const userSocketMap = {};
 
@@ -338,61 +278,45 @@ io.on("connection", (socket) => {
   const userId = socket.user?.id?.toString() || socket.handshake.query.userId;
 
   if (userId && userId !== "undefined") {
-    // Add them to the live dictionary
     userSocketMap[userId] = socket.id;
   }
 
-  // 3. BROADCAST THE LIVE LIST: Emit the keys (the user IDs) to ALL connected clients
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
-  // 1. JOIN A SECURE CONVERSATION
   socket.on("join_conversation", (conversationId) => {
     socket.join(conversationId);
     console.log(`User with Socket ID: ${socket.id} joined conversation: ${conversationId}`);
   });
 
-  // 2. SEND A SECURE RELATIONAL MESSAGE
- socket.on("send_message", async (data) => {
+  socket.on("send_message", async (data) => {
     try {
-      // Step A: Verify the VIP wristband mathematically
       const decodedToken = jwt.verify(data.token, process.env.JWT_SECRET);
-
-      // Step B: Extract their real Database ID from the token
       const verifiedSenderId = decodedToken.id;
       const verifiedUsername = decodedToken.username;
 
-      // Step C: Save to PostgreSQL using our NEW Relational Schema
       const savedMessage = await prisma.message.create({
         data: {
           text: data.message,
-          senderId: verifiedSenderId,         // Links perfectly to the User table
-          conversationId: data.conversationId // Links perfectly to the Conversation table
+          senderId: verifiedSenderId,         
+          conversationId: data.conversationId 
         },
       });
 
-      // Step D: Broadcast the message to the room, attaching the verified username
-     // Step D: Broadcast the message to the room, attaching the verified username
       const secureBroadcastData = {
         id: savedMessage.id,
         text: savedMessage.text,
         author: verifiedUsername,
-        // --- THE FIX ---
-        // Instead of a formatted server-time string, send the raw database timestamp.
-        // The user's browser will do the math to convert it to their local timezone!
         createdAt: savedMessage.createdAt, 
         conversationId: data.conversationId
       };
 
       socket.to(data.conversationId).emit("receive_message", secureBroadcastData);
-
     } catch (error) {
       console.error("SECURITY ALERT or DB ERROR: Message blocked!", error);
     }
   });
 
-  // 3. TYPING INDICATORS
   socket.on("typing", (data) => {
-    // We MUST broadcast both the username and the specific conversationId
     socket.to(data.conversationId).emit("display_typing", {
       username: data.username,
       conversationId: data.conversationId
@@ -407,7 +331,6 @@ io.on("connection", (socket) => {
     console.log("User disconnected:", socket.id);
     if (userId) {
       delete userSocketMap[userId];
-      // Broadcast the newly updated list
       io.emit("getOnlineUsers", Object.keys(userSocketMap));
     }
   });

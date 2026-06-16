@@ -1,4 +1,6 @@
 import React, { createContext, useState, useEffect } from "react";
+// --- 1. IMPORT THE CRYPTOGRAPHY ENGINE ---
+import { generateKeyPair, lockPrivateKey, unlockPrivateKey } from "../utils/encryption";
 
 // 1. Create the empty "Cloud"
 export const AuthContext = createContext();
@@ -33,6 +35,19 @@ export const AuthProvider = ({ children }) => {
       const data = await response.json();
 
       if (response.status === 200) {
+        
+        // --- 2. THE VAULT UNLOCK SEQUENCE ---
+        if (data.encryptedPrivateKey) {
+            const unlockedKey = unlockPrivateKey(data.encryptedPrivateKey, inputPassword);
+            if (unlockedKey) {
+                // Success! Drop the decrypted key into browser memory
+                localStorage.setItem('chatflow_private_key', unlockedKey);
+                console.log("🔓 Private Key successfully restored from Vault!");
+            } else {
+                console.warn("🚨 Security Warning: Could not restore End-to-End Encryption keys.");
+            }
+        }
+
         localStorage.setItem("chat_token", data.token);
         localStorage.setItem("chat_username", data.username);
 
@@ -50,16 +65,33 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Global Register Function
-  const registerAccount = async (inputUsername, inputPassword, publicKey) => {
+  const registerAccount = async (inputUsername, inputPassword) => {
     try {
+      
+      // --- 3. THE VAULT CREATION SEQUENCE ---
+      // Step A: Generate fresh E2EE keys natively in the context
+      const keys = generateKeyPair();
+      
+      // Step B: Lock the Private Key inside an AES Vault using their password
+      const vault = lockPrivateKey(keys.privateKey, inputPassword);
+
+      // Step C: Send the Padlock and the Vault to the Node.js Server
       const response = await fetch("https://chatflow-backend-bvvt.onrender.com/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: inputUsername, password: inputPassword ,publicKey: publicKey}),
+        body: JSON.stringify({ 
+            username: inputUsername, 
+            password: inputPassword,
+            publicKey: keys.publicKey,
+            encryptedPrivateKey: vault 
+        }),
       });
+      
       const data = await response.json();
 
       if (response.status === 201) {
+        // Step D: Save the raw private key locally so they can chat immediately
+        localStorage.setItem('chatflow_private_key', keys.privateKey);
         return { success: true };
       } else {
         return { success: false, error: data.error };
@@ -74,12 +106,17 @@ export const AuthProvider = ({ children }) => {
   const logoutAccount = () => {
     localStorage.removeItem("chat_token");
     localStorage.removeItem("chat_username");
+    
+    // --- 4. THE SECURITY SWEEP ---
+    // Permanently destroy the private key from this browser instance
+    localStorage.removeItem("chatflow_private_key");
+    
     setToken(null);
     setUsername("");
     setIsAuthenticated(false);
   };
 
-  // 3. Return the Provider, passing all our state and functions into the "value" prop
+  // Return the Provider
   return (
     <AuthContext.Provider
       value={{

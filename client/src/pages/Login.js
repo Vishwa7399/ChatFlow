@@ -1,5 +1,4 @@
 import React, { useState, useContext } from "react";
-import { generateAndStoreKeyPair } from "../utils/encryption";
 import { AuthContext } from "../context/AuthContext";
 import { MessageSquare, Lock, User, ArrowRight, CheckCircle2 } from "lucide-react";
 
@@ -9,7 +8,7 @@ function Login() {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  // 1. NEW STATE: Track the confirmation password
+  // 1. STATE: Track the confirmation password
   const [confirmPassword, setConfirmPassword] = useState(""); 
   
   const [feedback, setFeedback] = useState({ type: "", message: "" });
@@ -24,7 +23,7 @@ function Login() {
       return setFeedback({ type: "error", message: "All fields are required." });
     }
 
-    // 2. NEW LOGIC: Prevent registration if passwords mismatch
+    // Prevent registration if passwords mismatch
     if (!isLogin && password !== confirmPassword) {
       return setFeedback({ type: "error", message: "Passwords do not match." });
     }
@@ -35,22 +34,22 @@ function Login() {
     if (isLogin) {
       result = await loginAccount(username, password);
       if (!result.success) setFeedback({ type: "error", message: result.error });
- } else {
-  // 1. NEW: Generate the keys right before we call Context!
-  const generatedPublicKey = generateAndStoreKeyPair();
+    } else {
+      // --- THE CLEANUP ---
+      // We no longer generate keys here! We just pass the raw credentials 
+      // to the AuthContext, and let the Context handle the AES Vault logic.
+      result = await registerAccount(username, password);
 
-  // 2. Pass the new Public Key to our AuthContext
-  result = await registerAccount(username, password, generatedPublicKey);
-
-  if (result.success) {
-    setFeedback({ type: "success", message: "Account created! Please log in." });
-    setIsLogin(true);
-    setPassword(""); 
-    setConfirmPassword(""); 
-  } else {
-    setFeedback({ type: "error", message: result.error });
-  }
-}
+      if (result.success) {
+        setFeedback({ type: "success", message: "Account created! Please log in." });
+        setIsLogin(true);
+        setPassword(""); 
+        setConfirmPassword(""); 
+      } else {
+        setFeedback({ type: "error", message: result.error });
+      }
+    }
+    
     setIsLoading(false);
   };
 
@@ -109,7 +108,7 @@ function Login() {
             </div>
           </div>
 
-          {/* 3. NEW UI: Only renders if 'isLogin' is false */}
+          {/* UI: Only renders if 'isLogin' is false */}
           {!isLogin && (
             <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
               <label className="text-sm font-medium text-slate-400 ml-1">Confirm Password</label>
